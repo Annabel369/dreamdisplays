@@ -575,9 +575,7 @@ public final class YtDlp {
                 char[] buf = new char[8192];
                 int n;
                 while ((n = r.read(buf)) != -1) {
-                    synchronized (sink) {
-                        sink.append(buf, 0, n);
-                    }
+                    sink.append(buf, 0, n);
                 }
             } catch (IOException ignored) {
             }
