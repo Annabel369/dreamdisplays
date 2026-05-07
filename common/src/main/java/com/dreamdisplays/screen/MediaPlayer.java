@@ -315,7 +315,7 @@ public class MediaPlayer {
 
     public void updateFrame(GpuTexture texture) {
         synchronized (frameLock) {
-            if (!frameReady || preparedBuffer == null) return;
+            if (preparedBuffer == null || !frameReady) return;
 
             int w = screen.textureWidth,
                     h = screen.textureHeight;
