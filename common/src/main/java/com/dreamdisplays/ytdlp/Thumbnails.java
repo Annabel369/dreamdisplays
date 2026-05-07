@@ -148,7 +148,7 @@ public final class Thumbnails {
             int h = src.getHeight();
             NativeImage image = new NativeImage(NativeImage.Format.RGBA, w, h, false);
             int[] pixels = src.getRGB(0, 0, w, h, null, 0, w);
-            long ptr = image.pixels();
+            long ptr = image.getPointer();
             for (int i = 0; i < pixels.length; i++) {
                 int argb = pixels[i];
                 // Convert ARGB (BufferedImage) to ABGR (NativeImage RGBA little-endian)
