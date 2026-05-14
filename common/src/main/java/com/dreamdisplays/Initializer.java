@@ -1,6 +1,6 @@
 package com.dreamdisplays;
 
-import com.dreamdisplays.downloader.Init;
+import com.dreamdisplays.ffmpeg.FfmpegBinary;
 import com.dreamdisplays.net.Packets.*;
 import com.dreamdisplays.screen.Configuration;
 import com.dreamdisplays.screen.Manager;
@@ -9,6 +9,7 @@ import com.dreamdisplays.screen.Settings;
 import com.dreamdisplays.util.Facing;
 import com.dreamdisplays.util.RayCasting;
 import com.dreamdisplays.util.Utils;
+import com.dreamdisplays.ytdlp.FormatDiskCache;
 import com.dreamdisplays.ytdlp.YtDlp;
 import me.inotsleep.utils.logging.LoggingManager;
 import net.minecraft.client.Minecraft;
@@ -80,10 +81,10 @@ public class Initializer {
         // Load client display settings
         Settings.load();
 
-        Init.init();
         YtDlp.prewarmAsync();
+        FfmpegBinary.prewarmAsync();
         // Drop yt-dlp cache entries older than the URL TTL on a background thread
-        new Thread(com.dreamdisplays.ytdlp.FormatDiskCache::sweepExpired,
+        new Thread(FormatDiskCache::sweepExpired,
                 "dreamdisplays-cache-sweep").start();
         new Focuser().start();
 

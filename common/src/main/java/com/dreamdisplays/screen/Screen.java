@@ -250,7 +250,9 @@ public class Screen {
             if (desiredPaused && !paused) {
                 setPaused(true);
             }
-            if (canSeek && drift > SYNC_SEEK_TOLERANCE_NS) {
+            MediaPlayer mp = mediaPlayer;
+            boolean clockRunning = mp != null && mp.isClockRunning();
+            if (canSeek && clockRunning && drift > SYNC_SEEK_TOLERANCE_NS) {
                 seekVideoTo(targetTime);
             }
             if (!desiredPaused && paused) {
