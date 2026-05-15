@@ -60,6 +60,6 @@ object MediaProcess {
         if (offsetNanos > 0) {
             addAll(listOf("-ss", String.format(Locale.US, "%.6f", offsetNanos / 1e9)))
         }
-        addAll(listOf("-re", "-i", url))
+        addAll(listOf("-i", url))
     }
 }

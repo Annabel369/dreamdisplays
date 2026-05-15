@@ -10,7 +10,7 @@ Mod:
 - [x] Retry on all transient errors (403, 404, 429, 5xx, connection resets, timeouts)
 - [x] Increase max `yt-dlp` fetch retries from 2 to 3
 - [x] Add audio line retry with backoff when multiple displays compete for audio resources
-- [ ] Use merged video + audio stream for improved synchronization and reduced resource usage
+- [x] Reduce resource usage by displays
 - [x] Save brightness to display settings
 - [x] Some thumbnail loading optimizations
 - [x] Enhance project structure and code quality in some places

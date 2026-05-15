@@ -63,6 +63,11 @@ class MediaPlayer(
         private const val WATCHDOG_CHECK_INTERVAL_MS = 5000L
         private const val AUDIO_LINE_OPEN_RETRIES = 3
         private const val AUDIO_LINE_RETRY_DELAY_MS = 200L
+        private const val VIDEO_FPS = 30.0
+        private const val VIDEO_FRAME_NS = (1_000_000_000.0 / VIDEO_FPS).toLong()
+
+        private const val VIDEO_SYNC_THRESHOLD_NS = 10_000_000L // 10 ms
+        private const val VIDEO_DROP_THRESHOLD_NS = 80_000_000L // 80 ms
         private val RETRY_BACKOFF_MS = longArrayOf(1000, 3000, 8000)
 
         private val INIT_THREAD_COUNTER = AtomicInteger()
@@ -188,6 +193,13 @@ class MediaPlayer(
     fun canSeek(): Boolean = _initialized && seekable
 
     fun isClockRunning(): Boolean = startWallNanos != CLOCK_NOT_STARTED
+
+    private fun getAudioClockNanos(): Long {
+        val line = currentAudioLine ?: return seekOffsetNanos
+
+        return seekOffsetNanos +
+                (line.longFramePosition * 1_000_000_000L / AUDIO_SAMPLE_RATE)
+    }
 
     fun setVolume(volume: Float) {
         userVolume = volume.toDouble().coerceIn(0.0, 2.0)
@@ -383,85 +395,170 @@ class MediaPlayer(
     private fun videoReaderLoop(proc: Process, w: Int, h: Int, stopFlag: AtomicBoolean) {
         val frameSize = w * h * 4
         val frameData = ByteArray(frameSize)
+
         var firstFrameLogged = false
+        var videoPts = seekOffsetNanos
 
         synchronized(frameLock) {
             val cur = currentFrameBuffer
             if (cur == null || cur.capacity() < frameSize) {
-                currentFrameBuffer = ByteBuffer.allocateDirect(frameSize).order(ByteOrder.nativeOrder())
+                currentFrameBuffer = ByteBuffer.allocateDirect(frameSize)
+                    .order(ByteOrder.nativeOrder())
             }
         }
 
         val stderrBuf = StringBuilder()
+
         val stderrThread = daemon({
             try {
                 BufferedReader(InputStreamReader(proc.errorStream)).use { r ->
                     r.lineSequence().forEach { line ->
-                        synchronized(stderrBuf) { stderrBuf.append(line).append('\n') }
+                        synchronized(stderrBuf) {
+                            stderrBuf.append(line).append('\n')
+                        }
+
                         if (MediaUtils.isInterestingStderr(line)) {
                             LoggingManager.warn("[ffmpeg-v $debugLabel] $line")
                         }
                     }
                 }
-            } catch (_: IOException) {}
+            } catch (_: IOException) {
+            }
         }, "MediaPlayer-vstderr").also { it.start() }
 
         var normalEos = false
+
         try {
             proc.inputStream.use { input ->
+
                 while (!terminated.get() && !stopFlag.get()) {
+
                     val n = MediaUtils.readFull(input, frameData, frameSize)
-                    if (n < frameSize) { normalEos = true; break }
+
+                    if (n < frameSize) {
+                        normalEos = true
+                        break
+                    }
+
                     lastFrameReceivedNanos.set(System.nanoTime())
+
                     if (!firstFrameLogged) {
                         firstFrameLogged = true
+
                         startWallNanos = System.nanoTime()
-                        if (DEBUG) LoggingManager.info("[MP $debugLabel] first frame ${w}x${h}")
+
+                        if (DEBUG) {
+                            LoggingManager.info(
+                                "[MP $debugLabel] first frame ${w}x${h}"
+                            )
+                        }
                     }
-                    if (!captureSamples) continue
+
+                    val audioClock = getAudioClockNanos()
+                    val diff = videoPts - audioClock
+
+                    // Video ahead -> wait
+                    if (diff > VIDEO_SYNC_THRESHOLD_NS) {
+                        LockSupport.parkNanos(diff)
+                    }
+
+                    // Video too late -> drop frame
+                    if (diff < -VIDEO_DROP_THRESHOLD_NS) {
+                        if (DEBUG) {
+                            framesDropped.incrementAndGet()
+                        }
+
+                        videoPts += VIDEO_FRAME_NS
+                        continue
+                    }
+
+                    if (!captureSamples) {
+                        videoPts += VIDEO_FRAME_NS
+                        continue
+                    }
 
                     synchronized(frameLock) {
+
                         var frame = currentFrameBuffer
+
                         if (frame == null || frame.capacity() < frameSize) {
-                            frame = ByteBuffer.allocateDirect(frameSize).order(ByteOrder.nativeOrder())
+                            frame = ByteBuffer.allocateDirect(frameSize)
+                                .order(ByteOrder.nativeOrder())
+
                             currentFrameBuffer = frame
                         }
+
                         frame.clear()
                         frame.put(frameData, 0, frameSize)
                         frame.flip()
+
                         currentFrameWidth = w
                         currentFrameHeight = h
                     }
 
-                    if (DEBUG) samplesIn.incrementAndGet()
+                    if (DEBUG) {
+                        samplesIn.incrementAndGet()
+                    }
+
                     if (!frameTaskQueued.compareAndSet(false, true)) {
-                        if (DEBUG) framesDropped.incrementAndGet()
+
+                        if (DEBUG) {
+                            framesDropped.incrementAndGet()
+                        }
+
+                        videoPts += VIDEO_FRAME_NS
                         continue
                     }
-                    try { frameExecutor.submit(::prepareBuffer) }
-                    catch (_: RejectedExecutionException) { frameTaskQueued.set(false) }
+
+                    try {
+                        frameExecutor.submit(::prepareBuffer)
+                    } catch (_: RejectedExecutionException) {
+                        frameTaskQueued.set(false)
+                    }
+
+                    videoPts += VIDEO_FRAME_NS
                 }
             }
+
         } catch (e: IOException) {
+
             if (DEBUG && !terminated.get() && !stopFlag.get()) {
-                LoggingManager.warn("[MP $debugLabel] video read: ${e.message}")
+                LoggingManager.warn(
+                    "[MP $debugLabel] video read: ${e.message}"
+                )
             }
         }
 
         var exitCode = -1
+
         if (normalEos) {
+
             try {
+
                 val done = proc.waitFor(500, TimeUnit.MILLISECONDS)
+
                 exitCode = if (done) proc.exitValue() else -1
-                if (!done) proc.destroyForcibly()
+
+                if (!done) {
+                    proc.destroyForcibly()
+                }
+
             } catch (_: InterruptedException) {
                 Thread.currentThread().interrupt()
             }
         }
 
         if (!terminated.get() && !stopFlag.get()) {
-            try { stderrThread.join(500) } catch (_: InterruptedException) {}
-            val stderr = synchronized(stderrBuf) { stderrBuf.toString() }
+
+            try {
+                stderrThread.join(500)
+            } catch (_: InterruptedException) {
+            }
+
+            val stderr = synchronized(stderrBuf) {
+                stderrBuf.toString()
+            }
+
             handleStreamEnd(stderr, exitCode == 0)
         }
     }
