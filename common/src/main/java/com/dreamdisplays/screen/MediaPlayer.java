@@ -51,11 +51,16 @@ public class MediaPlayer {
 
     private static final long STOP_WAIT_TIMEOUT_SECONDS = 3;
     private static final long STATS_INTERVAL_MS = 2000;
-    private static final int MAX_FETCH_RETRIES = 2;
+    private static final int MAX_FETCH_RETRIES = 3;
     private static final int AUDIO_SAMPLE_RATE = 44100;
     private static final int AUDIO_CHUNK_BYTES = 44100 * 2 * 2 / 20;
     private static final int AUDIO_LINE_BUFFER_BYTES = AUDIO_CHUNK_BYTES * 10;
     private static final long CLOCK_NOT_STARTED = Long.MIN_VALUE;
+    private static final long WATCHDOG_TIMEOUT_NS = 30_000_000_000L;
+    private static final long WATCHDOG_CHECK_INTERVAL_MS = 5000;
+    private static final int AUDIO_LINE_OPEN_RETRIES = 3;
+    private static final long AUDIO_LINE_RETRY_DELAY_MS = 200;
+    private static final long[] RETRY_BACKOFF_MS = {1000, 3000, 8000};
     public static boolean captureSamples = true;
     private final AtomicLong samplesIn = new AtomicLong();
     private final AtomicLong framesToGpu = new AtomicLong();
@@ -81,6 +86,8 @@ public class MediaPlayer {
                 return t;
             });
     private volatile @Nullable ScheduledExecutorService statsExecutor;
+    private volatile @Nullable ScheduledExecutorService watchdogExecutor;
+    private final AtomicLong lastFrameReceivedNanos = new AtomicLong(0);
     private volatile @Nullable List<YtStream> availableVideoStreams;
     private volatile @Nullable List<YtStream> availableAudioStreams;
     private volatile @Nullable YtStream currentVideoStream;
@@ -473,6 +480,7 @@ public class MediaPlayer {
             vt.start();
             at.start();
             playing = true;
+            startWatchdog();
         } catch (IOException e) {
             LoggingManager.error("[MediaPlayer " + debugLabel + "] Failed to start ffmpeg", e);
             screen.errored = true;
@@ -481,6 +489,7 @@ public class MediaPlayer {
 
     private void stopStreams() {
         playing = false;
+        stopWatchdog();
         Process vp = videoProcess, ap = audioProcess;
         Thread vt = videoThread, at = audioThread;
         AtomicBoolean vStop = videoStopFlag, aStop = audioStopFlag;
@@ -494,8 +503,8 @@ public class MediaPlayer {
         if (vStop != null) vStop.set(true);
         if (aStop != null) aStop.set(true);
 
-        if (vp != null) vp.destroyForcibly();
-        if (ap != null) ap.destroyForcibly();
+        gracefulDestroy(vp);
+        gracefulDestroy(ap);
 
         synchronized (frameLock) {
             frameReady = false;
@@ -518,6 +527,36 @@ public class MediaPlayer {
         }
     }
 
+    private static void gracefulDestroy(@Nullable Process proc) {
+        if (proc == null) return;
+        try {
+            OutputStream stdin = proc.getOutputStream();
+            if (stdin != null) {
+                stdin.close();
+            }
+        } catch (IOException ignored) {
+        }
+        proc.destroy();
+        try {
+            if (!proc.waitFor(1, TimeUnit.SECONDS)) {
+                proc.destroyForcibly();
+            }
+        } catch (InterruptedException e) {
+            proc.destroyForcibly();
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private static void addReconnectFlags(List<String> cmd) {
+        cmd.addAll(List.of(
+                "-reconnect", "1",
+                "-reconnect_streamed", "1",
+                "-reconnect_delay_max", "10",
+                "-reconnect_on_network_error", "1",
+                "-reconnect_on_http_error", "4xx,5xx"
+        ));
+    }
+
     private Process buildVideoProcess(String ffmpeg, String url, int w, int h, long offsetNanos)
             throws IOException {
         List<String> cmd = new ArrayList<>();
@@ -525,6 +564,8 @@ public class MediaPlayer {
         cmd.addAll(List.of("-hide_banner", "-loglevel", "error", "-nostats"));
         cmd.addAll(List.of("-headers",
                 "User-Agent: " + USER_AGENT_V + "\r\nReferer: https://www.youtube.com/\r\n"));
+        addReconnectFlags(cmd);
+        cmd.addAll(List.of("-rw_timeout", "15000000"));
         if (offsetNanos > 0) {
             cmd.addAll(List.of("-ss",
                     String.format(Locale.US, "%.6f", offsetNanos / 1e9)));
@@ -542,6 +583,8 @@ public class MediaPlayer {
         cmd.addAll(List.of("-hide_banner", "-loglevel", "error", "-nostats"));
         cmd.addAll(List.of("-headers",
                 "User-Agent: " + USER_AGENT_V + "\r\nReferer: https://www.youtube.com/\r\n"));
+        addReconnectFlags(cmd);
+        cmd.addAll(List.of("-rw_timeout", "15000000"));
         if (offsetNanos > 0) {
             cmd.addAll(List.of("-ss",
                     String.format(Locale.US, "%.6f", offsetNanos / 1e9)));
@@ -555,6 +598,12 @@ public class MediaPlayer {
         int frameSize = w * h * 4;
         byte[] frameData = new byte[frameSize];
         boolean firstFrameLogged = false;
+
+        synchronized (frameLock) {
+            if (currentFrameBuffer == null || currentFrameBuffer.capacity() < frameSize) {
+                currentFrameBuffer = ByteBuffer.allocateDirect(frameSize).order(ByteOrder.nativeOrder());
+            }
+        }
 
         StringBuilder stderrBuf = new StringBuilder();
         Thread stderrThread = new Thread(() -> {
@@ -583,6 +632,7 @@ public class MediaPlayer {
                     normalEos = true;
                     break;
                 }
+                lastFrameReceivedNanos.set(System.nanoTime());
                 if (!firstFrameLogged) {
                     firstFrameLogged = true;
                     startWallNanos = System.nanoTime();
@@ -666,12 +716,26 @@ public class MediaPlayer {
                 LoggingManager.warn("[MediaPlayer " + debugLabel + "] javax.sound: PCM line not supported");
                 return;
             }
-            try {
-                line = (SourceDataLine) AudioSystem.getLine(info);
-                line.open(fmt, AUDIO_LINE_BUFFER_BYTES);
-            } catch (LineUnavailableException e) {
-                LoggingManager.warn("[MediaPlayer " + debugLabel + "] javax.sound: line unavailable: " + e.getMessage());
-                return;
+            for (int attempt = 1; attempt <= AUDIO_LINE_OPEN_RETRIES; attempt++) {
+                try {
+                    line = (SourceDataLine) AudioSystem.getLine(info);
+                    line.open(fmt, AUDIO_LINE_BUFFER_BYTES);
+                    break;
+                } catch (LineUnavailableException e) {
+                    if (attempt == AUDIO_LINE_OPEN_RETRIES) {
+                        LoggingManager.warn("[MediaPlayer " + debugLabel + "] javax.sound: line unavailable after "
+                                + AUDIO_LINE_OPEN_RETRIES + " attempts: " + e.getMessage());
+                        return;
+                    }
+                    LoggingManager.warn("[MediaPlayer " + debugLabel + "] javax.sound: line unavailable, retry "
+                            + attempt + "/" + AUDIO_LINE_OPEN_RETRIES);
+                    try {
+                        Thread.sleep(AUDIO_LINE_RETRY_DELAY_MS * attempt);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                }
             }
 
             long waitDeadline = System.nanoTime() + 5_000_000_000L;
@@ -723,30 +787,44 @@ public class MediaPlayer {
         }
     }
 
+    private static boolean isTransientError(String stderr) {
+        return stderr.contains("403") || stderr.contains("Forbidden")
+                || stderr.contains("404") || stderr.contains("Not Found")
+                || stderr.contains("429") || stderr.contains("Too Many Requests")
+                || stderr.contains("503") || stderr.contains("Service Unavailable")
+                || stderr.contains("502") || stderr.contains("Bad Gateway")
+                || stderr.contains("Connection reset")
+                || stderr.contains("Connection refused")
+                || stderr.contains("Connection timed out")
+                || stderr.contains("Network is unreachable")
+                || stderr.contains("Operation timed out")
+                || stderr.contains("Server returned");
+    }
+
     private void handleStreamEnd(String stderr, boolean normalEos, boolean isVideo) {
-        boolean is403 = stderr.contains("403") || stderr.contains("Forbidden");
+        if (terminated.get()) return;
 
-        if (is403 && fetchRetries < MAX_FETCH_RETRIES && !terminated.get()) {
-            fetchRetries++;
-            LoggingManager.warn("[MediaPlayer " + debugLabel + "] 403 Forbidden — invalidating cache, retry "
-                    + fetchRetries + "/" + MAX_FETCH_RETRIES);
-            YtDlp.invalidateCache(youtubeUrl);
-            initialized = false;
-            INIT_EXECUTOR.submit(this::initialize);
+        boolean is403or404 = stderr.contains("403") || stderr.contains("Forbidden")
+                || stderr.contains("404") || stderr.contains("Not Found");
+        boolean isTransient = isTransientError(stderr);
+
+        if (is403or404 && fetchRetries < MAX_FETCH_RETRIES) {
+            scheduleRetry(true);
             return;
         }
 
-        if (normalEos && liveStream && fetchRetries < MAX_FETCH_RETRIES && !terminated.get()) {
-            fetchRetries++;
-            LoggingManager.warn("[MediaPlayer " + debugLabel + "] live EOS — retrying "
-                    + fetchRetries + "/" + MAX_FETCH_RETRIES);
-            YtDlp.invalidateCache(youtubeUrl);
-            initialized = false;
-            INIT_EXECUTOR.submit(this::initialize);
+        if (isTransient && !is403or404 && fetchRetries < MAX_FETCH_RETRIES) {
+            scheduleRetry(false);
             return;
         }
 
-        if (normalEos && !liveStream && !terminated.get()) {
+        if (normalEos && liveStream && fetchRetries < MAX_FETCH_RETRIES) {
+            LoggingManager.warn("[MediaPlayer " + debugLabel + "] live EOS – retrying");
+            scheduleRetry(true);
+            return;
+        }
+
+        if (normalEos && !liveStream) {
             if (restartPending.compareAndSet(false, true)) {
                 safeExecute(() -> {
                     try {
@@ -765,9 +843,32 @@ public class MediaPlayer {
             return;
         }
 
-        if (!terminated.get()) {
-            screen.errored = true;
+        if (!stderr.isEmpty()) {
+            LoggingManager.error("[MediaPlayer " + debugLabel + "] unrecoverable stream error: "
+                    + truncate(stderr));
         }
+        screen.errored = true;
+    }
+
+    private void scheduleRetry(boolean invalidateCache) {
+        int attempt = fetchRetries++;
+        long delayMs = attempt < RETRY_BACKOFF_MS.length ? RETRY_BACKOFF_MS[attempt] : RETRY_BACKOFF_MS[RETRY_BACKOFF_MS.length - 1];
+        String reason = invalidateCache ? "cache invalidated" : "transient error";
+        LoggingManager.warn("[MediaPlayer " + debugLabel + "] " + reason + " — retry "
+                + fetchRetries + "/" + MAX_FETCH_RETRIES + " in " + delayMs + "ms");
+        if (invalidateCache) {
+            YtDlp.invalidateCache(youtubeUrl);
+        }
+        initialized = false;
+        INIT_EXECUTOR.submit(() -> {
+            try {
+                Thread.sleep(delayMs);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+            if (!terminated.get()) initialize();
+        });
     }
 
     private ByteBuffer ensurePreparedBufferCapacity(int size) {
@@ -853,6 +954,7 @@ public class MediaPlayer {
             preparedBufferSize = 0;
             currentFrameBuffer = null;
         }
+        stopWatchdog();
         stopStatsReporter();
         stopStreams();
         currentVideoStream = null;
@@ -952,6 +1054,47 @@ public class MediaPlayer {
     private boolean matchesRequestedLanguage(YtStream stream) {
         return (stream.getAudioTrackId() != null && stream.getAudioTrackId().contains(lang))
                 || (stream.getAudioTrackName() != null && stream.getAudioTrackName().contains(lang));
+    }
+
+    private void startWatchdog() {
+        stopWatchdog();
+        lastFrameReceivedNanos.set(System.nanoTime());
+        ScheduledExecutorService wd = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "MediaPlayer-watchdog");
+            t.setDaemon(true);
+            return t;
+        });
+        watchdogExecutor = wd;
+        wd.scheduleAtFixedRate(() -> {
+            try {
+                if (terminated.get() || !playing) return;
+                long lastFrame = lastFrameReceivedNanos.get();
+                if (lastFrame == 0) return;
+                long elapsed = System.nanoTime() - lastFrame;
+                if (elapsed > WATCHDOG_TIMEOUT_NS) {
+                    LoggingManager.warn("[MediaPlayer " + debugLabel + "] watchdog: no frames for "
+                            + (elapsed / 1_000_000L) + "ms — restarting streams");
+                    lastFrameReceivedNanos.set(System.nanoTime());
+                    safeExecute(() -> {
+                        if (terminated.get()) return;
+                        YtStream vs = currentVideoStream, as = currentAudioStream;
+                        if (vs != null && as != null) {
+                            long pos = liveStream ? 0L : getCurrentTime();
+                            startStreams(vs, as, pos);
+                        }
+                    });
+                }
+            } catch (Throwable ignored) {
+            }
+        }, WATCHDOG_CHECK_INTERVAL_MS, WATCHDOG_CHECK_INTERVAL_MS, TimeUnit.MILLISECONDS);
+    }
+
+    private void stopWatchdog() {
+        ScheduledExecutorService wd = watchdogExecutor;
+        if (wd != null) {
+            wd.shutdownNow();
+            watchdogExecutor = null;
+        }
     }
 
     private void startStatsReporter() {
