@@ -4,21 +4,22 @@ Mod:
 
 - [x] Switch from `GStreamer` to `FFmpeg` which is more reliable and performant library for video playback
 - [x] Rewrite mod in Kotlin for better maintainability
-- [x] Add error handling for expired YouTube URLs
+- [x] Huge mod optimizations and stability improvements
+- [x] Reduced CPU / GPU resource usage and improved performance significantly
+- [x] Allow seeking to any position on the progress slider
 - [x] Add `FFmpeg` automatic HTTP reconnection flags for resilient streaming over unstable networks
 - [x] Add watchdog timer that detects stalled `FFmpeg` processes and restarts streams automatically
 - [x] Retry on all transient errors (403, 404, 429, 5xx, connection resets, timeouts)
-- [x] Increase max `yt-dlp` fetch retries from 2 to 3
-- [x] Add audio line retry with backoff when multiple displays compete for audio resources
-- [x] Reduce resource usage by displays
-- [x] Save brightness to display settings
-- [x] Some thumbnail loading optimizations
-- [x] Enhance project structure and code quality in some places
+- [x] Add error handling for expired YouTube URLs
+- [x] Fix brightness not saving properly
 - [x] Fix client null error in window focus handling
 - [x] Fix list of available qualities
-- [x] Fix frame buffers preallocation to reduce GC pressure during playback
-- [ ] Fix language selector ([#73](https://github.com/arsmotorin/dreamdisplays/issues/73))
+- [x] Fix `BufferOverflow` in specific edge cases
+- [x] Fix some edge cases of audio desynchronization after long playback
+- [x] Fix suggestion scroller not showing up when in large menu mode
+- [x] Fix language selector ([#73](https://github.com/arsmotorin/dreamdisplays/issues/73))
 - [x] Fix volume reset after leaving active display distance ([#76](https://github.com/arsmotorin/dreamdisplays/issues/76))
+- [x] Enhance project structure and code quality in some places
 
 Plugin:
 
