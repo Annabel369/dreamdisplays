@@ -49,6 +49,7 @@ object YtDlp {
     private const val COOKIE_REFRESH_MS: Long = 2L * 60L * 60L * 1_000L
 
     private val BROWSER_CANDIDATES = arrayOf("chrome", "firefox", "safari", "edge", "brave", "opera", "vivaldi")
+    private val BROWSER_CANDIDATES_MACOS = arrayOf("safari", "firefox", "chrome", "edge", "brave", "opera", "vivaldi")
 
     private val PREWARM_EXECUTOR = Executors.newSingleThreadExecutor { r ->
         Thread(r, "YtDlp-prewarm").apply { isDaemon = true }
@@ -433,6 +434,11 @@ object YtDlp {
         val cmd = ArrayList<String>()
         cmd.add(binary)
         addCookieArgs(cmd)
+
+        if (resolveCookieBrowser() == null && !Files.exists(BUNDLED_DIR.resolve("cookies.txt"))) {
+            cmd.addAll(listOf("--extractor-args", "youtube:player_client=tv_embedded,web,mweb"))
+        }
+
         cmd.addAll(listOf(
             "-J", "--no-playlist", "--no-warnings", "--no-check-formats",
             "--ignore-config", "--no-mark-watched",
