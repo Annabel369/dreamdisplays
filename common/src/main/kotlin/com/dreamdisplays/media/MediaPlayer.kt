@@ -62,8 +62,7 @@ class MediaPlayer(
         private const val WATCHDOG_CHECK_INTERVAL_MS = 5000L
         private const val AUDIO_LINE_OPEN_RETRIES = 3
         private const val AUDIO_LINE_RETRY_DELAY_MS = 200L
-        private const val VIDEO_FPS = 30.0
-        private const val VIDEO_FRAME_NS = (1_000_000_000.0 / VIDEO_FPS).toLong()
+        private const val DEFAULT_VIDEO_FPS = 30.0
 
         private const val VIDEO_SYNC_THRESHOLD_NS = 10_000_000L // 10 ms
         private const val VIDEO_DROP_THRESHOLD_NS = 80_000_000L // 80 ms
@@ -129,6 +128,7 @@ class MediaPlayer(
     private val frameAvailable = AtomicBoolean(false)
     @Volatile private var frameW = 0
     @Volatile private var frameH = 0
+    @Volatile private var videoFrameNs: Long = (1_000_000_000.0 / DEFAULT_VIDEO_FPS).toLong()
 
     @Volatile private var userVolume = Initializer.config.defaultDisplayVolume
     @Volatile private var lastAttenuation = 1.0
@@ -329,6 +329,8 @@ class MediaPlayer(
         }
         this.frameW = frameW
         this.frameH = frameH
+        val sourceFps = video.fps?.takeIf { it > 1.0 } ?: DEFAULT_VIDEO_FPS
+        videoFrameNs = (1_000_000_000.0 / sourceFps).toLong()
 
         try {
             if (DEBUG) {
@@ -367,9 +369,6 @@ class MediaPlayer(
         vStop?.set(true); aStop?.set(true)
         MediaProcess.gracefulDestroy(vp)
         MediaProcess.gracefulDestroy(ap)
-
-        frameAvailable.set(false)
-        readyBufferRef.set(null)
 
         joinSafely(vt); joinSafely(at)
     }
@@ -421,16 +420,17 @@ class MediaPlayer(
                         if (DEBUG) LoggingManager.info("[MP $debugLabel] first frame ${w}x${h}")
                     }
 
+                    val frameNs = videoFrameNs
                     val diff = videoPts - getAudioClockNanos()
                     if (diff > VIDEO_SYNC_THRESHOLD_NS) LockSupport.parkNanos(diff)
                     if (diff < -VIDEO_DROP_THRESHOLD_NS) {
                         if (DEBUG) framesDropped.incrementAndGet()
-                        videoPts += VIDEO_FRAME_NS
+                        videoPts += frameNs
                         continue
                     }
 
                     if (!captureSamples) {
-                        videoPts += VIDEO_FRAME_NS
+                        videoPts += frameNs
                         continue
                     }
 
@@ -443,13 +443,17 @@ class MediaPlayer(
                     spare.flip()
 
                     val prev = readyBufferRef.getAndSet(spare)
-                    spare = prev ?: if (spare === bufA) bufB else bufA
+                    spare = when {
+                        prev === bufA || prev === bufB -> prev
+                        spare === bufA -> bufB
+                        else -> bufA
+                    }
                     frameAvailable.set(true)
 
                     if (DEBUG) samplesIn.incrementAndGet()
                     mc.execute(fitTextureTask)
 
-                    videoPts += VIDEO_FRAME_NS
+                    videoPts += frameNs
                 }
             }
         } catch (e: IOException) {
@@ -511,14 +515,6 @@ class MediaPlayer(
                     return
                 }
                 line = openAudioLine(info, fmt) ?: return
-
-                // wait for first video frame to arrive (or give up after 5s)
-                val deadline = System.nanoTime() + 5_000_000_000L
-                while (startWallNanos == CLOCK_NOT_STARTED
-                    && !terminated.get() && !stopFlag.get()
-                    && System.nanoTime() < deadline) {
-                    LockSupport.parkNanos(10_000_000L)
-                }
                 if (terminated.get() || stopFlag.get()) return
                 line.start()
                 currentAudioLine = line
@@ -664,10 +660,6 @@ class MediaPlayer(
         val audio = currentAudioStream ?: return
 
         val wasPlaying = playing
-        frameAvailable.set(false)
-        readyBufferRef.set(null)
-        Minecraft.getInstance().execute(displayScreen::reloadTexture)
-
         seekOffsetNanos = nanos
         if (wasPlaying) startStreams(video, audio, nanos)
         if (fire) displayScreen.afterSeek()
@@ -690,7 +682,6 @@ class MediaPlayer(
         } ?: currentAudio
 
         val pos = if (liveStream) 0L else getCurrentTime()
-        Minecraft.getInstance().execute(displayScreen::reloadTexture)
         currentVideoStream = best
         currentAudioStream = chosenAudio
         lastQuality = MediaStreamSelector.parseQuality(best)

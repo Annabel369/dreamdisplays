@@ -14,7 +14,7 @@ class YtStream(
     val audioTrackName: String?,
     private val vcodec: String?,
     private val acodec: String?,
-    private val fps: Double?,
+    val fps: Double?,
     private val tbrKbps: Double?,
     private val hasVideo: Boolean,
     private val hasAudio: Boolean,
