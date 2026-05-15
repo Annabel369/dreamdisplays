@@ -18,7 +18,11 @@ object MediaProcess {
     @Throws(IOException::class)
     fun buildVideo(ffmpeg: String, url: String, w: Int, h: Int, offsetNanos: Long): Process {
         val cmd = baseCommand(ffmpeg, url, offsetNanos).apply {
-            addAll(listOf("-an", "-vf", "scale=$w:$h", "-f", "rawvideo", "-pix_fmt", "rgba", "-"))
+            addAll(listOf(
+                "-an",
+                "-vf", "scale=$w:$h:force_original_aspect_ratio=increase,crop=$w:$h,format=rgba",
+                "-f", "rawvideo", "-pix_fmt", "rgba", "-",
+            ))
         }
         return ProcessBuilder(cmd).start()
     }

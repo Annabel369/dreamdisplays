@@ -3,7 +3,6 @@ package com.dreamdisplays.media
 import com.dreamdisplays.Initializer
 import com.dreamdisplays.display.DisplayScreen
 import com.dreamdisplays.ffmpeg.FFmpegBinary
-import com.dreamdisplays.util.ConverterUtil
 import com.dreamdisplays.util.GeneralUtil
 import com.dreamdisplays.ytdlp.YtDlp
 import com.dreamdisplays.ytdlp.YtStream
@@ -340,7 +339,15 @@ class MediaPlayer(
         startWallNanos = CLOCK_NOT_STARTED
 
         val q = if (lastQuality > 0) lastQuality else MediaStreamSelector.parseQuality(video)
-        val (frameW, frameH) = MediaStreamSelector.qualityToDims(q).let { it[0] to it[1] }
+        // FFmpeg now scales+crops directly to the on-screen texture size, so
+        // the Java side never has to rescale a frame.  Fall back to the quality
+        // preset only if the screen hasn't allocated its texture yet.
+        val (frameW, frameH) = run {
+            val tw = displayScreen.textureWidth
+            val th = displayScreen.textureHeight
+            if (tw > 0 && th > 0) tw to th
+            else MediaStreamSelector.qualityToDims(q).let { it[0] to it[1] }
+        }
 
         try {
             if (DEBUG) {
@@ -717,19 +724,13 @@ class MediaPlayer(
 
             synchronized(frameLock) {
                 val sourceBuf = currentFrameBuffer ?: return@synchronized
-                val sourceW = currentFrameWidth
-                val sourceH = currentFrameHeight
                 val outputSize = targetW * targetH * 4
                 val source = sourceBuf.duplicate().order(ByteOrder.nativeOrder()).apply { rewind() }
                 val output = ensurePreparedBufferCapacity(outputSize)
 
-                if (sourceW == targetW && sourceH == targetH) {
-                    output.put(source).flip()
-                } else {
-                    output.position(0).limit(outputSize)
-                    ConverterUtil.scaleRGBA(source, sourceW, sourceH, output, targetW, targetH)
-                    output.position(0).limit(outputSize)
-                }
+                // FFmpeg already produces frames at exactly targetW × targetH —
+                // a straight bulk copy is all that's needed.
+                output.put(source).flip()
 
                 MediaBufferEffects.applyBrightness(output, brightness)
                 preparedW = targetW
