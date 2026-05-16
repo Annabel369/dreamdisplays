@@ -43,6 +43,9 @@ tasks.jar {
     from(rootProject.file("LICENSE"))
 }
 
+// Hack: it's a bug in Loom alpha where the validation task expects a named namespace but the classtweaker correctly uses
+// official namespaces, so we have to disable the validation until it's fixed.
+// TODO: when a stable Loom for 26.1.2/26.2 is released, this should be removed
 tasks.named("validateAccessWidener") { enabled = false }
 
 tasks.shadowJar {
