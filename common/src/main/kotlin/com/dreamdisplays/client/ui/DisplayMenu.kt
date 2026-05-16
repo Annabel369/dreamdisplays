@@ -81,11 +81,11 @@ class DisplayMenu private constructor() : Screen(Component.translatable("dreamdi
             Identifier.fromNamespaceAndPath(Initializer.MOD_ID, "pause"), 2
         ) {
             override fun onPress() {
-                ds.setPaused(!ds.getPaused())
+                ds.setPaused(!ds.isPaused)
                 setIconTextureId(
                     Identifier.fromNamespaceAndPath(
                         Initializer.MOD_ID,
-                        if (ds.getPaused()) "play" else "pause"
+                        if (ds.isPaused) "play" else "pause"
                     )
                 )
             }
@@ -93,7 +93,7 @@ class DisplayMenu private constructor() : Screen(Component.translatable("dreamdi
         pauseButtonWidget!!.setIconTextureId(
             Identifier.fromNamespaceAndPath(
                 Initializer.MOD_ID,
-                if (ds.getPaused()) "play" else "pause"
+                if (ds.isPaused) "play" else "pause"
             )
         )
 
@@ -133,7 +133,7 @@ class DisplayMenu private constructor() : Screen(Component.translatable("dreamdi
             }
 
             override fun applyValue() {
-                ds.setRenderDistance((value * (128 - 24) + 24).toInt())
+                ds.renderDistance = (value * (128 - 24) + 24).toInt()
                 DisplayManager.saveScreenData(ds)
             }
         }
@@ -167,7 +167,7 @@ class DisplayMenu private constructor() : Screen(Component.translatable("dreamdi
         }
 
         renderDReset = resetButton {
-            ds.setRenderDistance(Initializer.config.defaultDistance)
+            ds.renderDistance = Initializer.config.defaultDistance
             renderD?.let {
                 it.value = (Initializer.config.defaultDistance - 24) / (128 - 24).toDouble()
                 it.message = Component.literal("${Initializer.config.defaultDistance} blocks")
@@ -565,7 +565,7 @@ class DisplayMenu private constructor() : Screen(Component.translatable("dreamdi
             it.setIconTextureId(
                 Identifier.fromNamespaceAndPath(
                     Initializer.MOD_ID,
-                    if (scr.getPaused()) "play" else "pause"
+                    if (scr.isPaused) "play" else "pause"
                 )
             )
         }

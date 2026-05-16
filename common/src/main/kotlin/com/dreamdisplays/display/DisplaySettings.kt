@@ -28,12 +28,9 @@ object DisplaySettings {
                 val loaded: Map<String, ClientDisplaySettings>? = GSON.fromJson(reader, type)
                 if (loaded != null) {
                     displaySettings.clear()
-                    for ((key, value) in loaded) {
-                        try {
-                            displaySettings[UUID.fromString(key)] = value
-                        } catch (_: IllegalArgumentException) {
-                            LoggingManager.error("[DisplaySettings] Invalid UUID in client display settings: $key.")
-                        }
+                    loaded.forEach { (key, value) ->
+                        runCatching { displaySettings[UUID.fromString(key)] = value }
+                            .onFailure { LoggingManager.error("[DisplaySettings] Invalid UUID in client display settings: $key.") }
                     }
                 }
             }
@@ -52,14 +49,9 @@ object DisplaySettings {
                 val type = object : TypeToken<Map<String, FullDisplayData>>() {}.type
                 val loaded: Map<String, FullDisplayData>? = GSON.fromJson(reader, type)
                 val displays = HashMap<UUID, FullDisplayData>()
-                if (loaded != null) {
-                    for ((key, value) in loaded) {
-                        try {
-                            displays[UUID.fromString(key)] = value
-                        } catch (_: IllegalArgumentException) {
-                            LoggingManager.error("[DisplaySettings] Invalid UUID in server displays: $key.")
-                        }
-                    }
+                loaded?.forEach { (key, value) ->
+                    runCatching { displays[UUID.fromString(key)] = value }
+                        .onFailure { LoggingManager.error("[DisplaySettings] Invalid UUID in server displays: $key.") }
                 }
                 serverDisplays[serverId] = displays
                 LoggingManager.info("[DisplaySettings] Loaded ${displays.size} displays for server: $serverId.")

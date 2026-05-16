@@ -674,7 +674,7 @@ class MediaPlayer(
                     try {
                         val video = currentVideoStream
                         val audio = currentAudioStream
-                        if (!terminated.get() && !displayScreen.getPaused() && video != null && audio != null) {
+                        if (!terminated.get() && !displayScreen.isPaused && video != null && audio != null) {
                             seekOffsetNanos = 0
                             startStreams(video, audio, 0)
                             displayScreen.afterSeek()

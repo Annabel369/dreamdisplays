@@ -23,8 +23,6 @@ import org.lwjgl.glfw.GLFW
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.util.*
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.sqrt
 
 /** Main mod initializer. */
@@ -32,10 +30,10 @@ object Initializer {
 
     const val MOD_ID: String = "dreamdisplays"
 
-    private val wasPressed = booleanArrayOf(false)
-    private val wasInMultiplayer = AtomicBoolean(false)
-    private val lastLevel = AtomicReference<ClientLevel?>(null)
-    private val wasFocused = AtomicBoolean(false)
+    private var wasPressed = false
+    private var wasInMultiplayer = false
+    @Volatile private var lastLevel: ClientLevel? = null
+    private var wasFocused = false
 
     var config: Config = Config(File("./config/$MOD_ID"))
 
@@ -81,40 +79,19 @@ object Initializer {
     fun onDisplayInfoPacket(packet: Packets.Info) {
         if (!displaysEnabled) return
 
-        if (DisplayManager.screens.containsKey(packet.uuid)) {
-            val displayScreen = DisplayManager.screens[packet.uuid]
-            displayScreen?.updateData(packet)
+        DisplayManager.screens[packet.uuid]?.let {
+            it.updateData(packet)
             return
         }
 
         Minecraft.getInstance().player?.let { player ->
-            val savedData = DisplaySettings.getDisplayData(packet.uuid)
-            val renderDistance = savedData?.renderDistance ?: config.defaultDistance
-
-            val x = packet.pos.x
-            val y = packet.pos.y
-            val z = packet.pos.z
-            val w = packet.width
-            val h = packet.height
-            val facing = packet.facingUtil.toString()
-
-            var maxX = x
-            val maxY = y + h - 1
-            var maxZ = z
-
-            when (facing) {
-                "NORTH", "SOUTH" -> maxX += w - 1
-                "EAST", "WEST" -> maxZ += w - 1
-            }
-
-            val playerPos = player.blockPosition()
-            val clampedX = minOf(maxOf(playerPos.x, x), maxX)
-            val clampedY = minOf(maxOf(playerPos.y, y), maxY)
-            val clampedZ = minOf(maxOf(playerPos.z, z), maxZ)
-            val closestPos = BlockPos(clampedX, clampedY, clampedZ)
-            val distance = sqrt(playerPos.distSqr(closestPos))
-
-            if (distance > renderDistance) return
+            val renderDistance = DisplaySettings.getDisplayData(packet.uuid)?.renderDistance ?: config.defaultDistance
+            val dist = distanceToScreen(
+                packet.pos.x, packet.pos.y, packet.pos.z,
+                packet.width, packet.height, packet.facingUtil.toString(),
+                player.blockPosition()
+            )
+            if (dist > renderDistance) return
         }
 
         YtDlp.prefetchFormats(packet.url)
@@ -142,14 +119,13 @@ object Initializer {
         )
 
         val savedData = DisplaySettings.getDisplayData(uuid)
-        displayScreen.setRenderDistance(savedData?.renderDistance ?: config.defaultDistance)
+        displayScreen.renderDistance = savedData?.renderDistance ?: config.defaultDistance
 
         DisplayManager.registerScreen(displayScreen)
         if (code != "") displayScreen.loadVideo(code, lang)
     }
 
     fun onSyncPacket(packet: Packets.Sync) {
-        if (!DisplayManager.screens.containsKey(packet.uuid)) return
         DisplayManager.screens[packet.uuid]?.updateData(packet)
     }
 
@@ -158,8 +134,8 @@ object Initializer {
             data.uuid, data.ownerUuid, data.x, data.y, data.z, data.facing,
             data.width, data.height, data.isSync
         )
-        displayScreen.setRenderDistance(data.renderDistance)
-        displayScreen.setSavedTimeNanos(data.currentTimeNanos)
+        displayScreen.renderDistance = data.renderDistance
+        displayScreen.savedTimeNanos = data.currentTimeNanos
         displayScreen.volume = data.volume
         displayScreen.quality = data.quality
         displayScreen.brightness = data.brightness
@@ -172,6 +148,26 @@ object Initializer {
         }
     }
 
+    private fun distanceToScreen(
+        x: Int, y: Int, z: Int, width: Int, height: Int, facing: String, playerPos: BlockPos
+    ): Double {
+        var maxX = x
+        val maxY = y + height - 1
+        var maxZ = z
+        when (facing) {
+            "NORTH", "SOUTH" -> maxX += width - 1
+            "EAST", "WEST" -> maxZ += width - 1
+        }
+        return sqrt(playerPos.distSqr(BlockPos(
+            minOf(maxOf(playerPos.x, x), maxX),
+            minOf(maxOf(playerPos.y, y), maxY),
+            minOf(maxOf(playerPos.z, z), maxZ)
+        )))
+    }
+
+    private fun distanceToData(data: DisplaySettings.FullDisplayData, playerPos: BlockPos) =
+        distanceToScreen(data.x, data.y, data.z, data.width, data.height, data.facing, playerPos)
+
     private fun checkVersionAndSendPacket() {
         try {
             sendPacket(Packets.Version(GeneralUtil.getModVersion()))
@@ -183,23 +179,23 @@ object Initializer {
     fun onEndTick(minecraft: Minecraft) {
         val level = minecraft.level
         if (level != null && minecraft.currentServer != null) {
-            if (lastLevel.get() == null) {
-                lastLevel.set(level)
+            if (lastLevel == null) {
+                lastLevel = level
                 checkVersionAndSendPacket()
             }
-            if (level !== lastLevel.get()) {
-                lastLevel.set(level)
+            if (level !== lastLevel) {
+                lastLevel = level
                 DisplayManager.unloadAll()
                 hoveredDisplayScreen = null
                 checkVersionAndSendPacket()
             }
-            wasInMultiplayer.set(true)
+            wasInMultiplayer = true
         } else {
-            if (wasInMultiplayer.get()) {
-                wasInMultiplayer.set(false)
+            if (wasInMultiplayer) {
+                wasInMultiplayer = false
                 DisplayManager.unloadAll()
                 hoveredDisplayScreen = null
-                lastLevel.set(null)
+                lastLevel = null
                 return
             }
         }
@@ -210,35 +206,16 @@ object Initializer {
         val player = minecraft.player ?: return
 
         unloadCheckTick++
-        if (unloadCheckTick >= 10 && displaysEnabled && !DisplayManager.unloadedScreens.isEmpty()) {
+        if (unloadCheckTick >= 10 && displaysEnabled && DisplayManager.unloadedScreens.isNotEmpty()) {
             unloadCheckTick = 0
-            val toRestore = ArrayList<DisplaySettings.FullDisplayData>()
-
-            for (data in DisplayManager.unloadedScreens.values) {
-                if (data.videoUrl.isEmpty()) continue
-
-                var maxX = data.x
-                val maxY = data.y + data.height - 1
-                var maxZ = data.z
-                when (data.facing) {
-                    "NORTH", "SOUTH" -> maxX += data.width - 1
-                    "EAST", "WEST" -> maxZ += data.width - 1
+            val playerPos = player.blockPosition()
+            DisplayManager.unloadedScreens.values
+                .filter { it.videoUrl.isNotEmpty() && distanceToData(it, playerPos) <= it.renderDistance }
+                .toList()
+                .forEach { data ->
+                    DisplayManager.unloadedScreens.remove(data.uuid)
+                    restoreScreen(data)
                 }
-
-                val playerPos = player.blockPosition()
-                val clampedX = minOf(maxOf(playerPos.x, data.x), maxX)
-                val clampedY = minOf(maxOf(playerPos.y, data.y), maxY)
-                val clampedZ = minOf(maxOf(playerPos.z, data.z), maxZ)
-                val closestPos = BlockPos(clampedX, clampedY, clampedZ)
-                val distance = sqrt(playerPos.distSqr(closestPos))
-
-                if (distance <= data.renderDistance) toRestore.add(data)
-            }
-
-            for (data in toRestore) {
-                DisplayManager.unloadedScreens.remove(data.uuid)
-                restoreScreen(data)
-            }
         }
 
         for (displayScreen in DisplayManager.getScreens()) {
@@ -263,17 +240,17 @@ object Initializer {
         val window = minecraft.window.handle()
         val pressed = GLFW.glfwGetMouseButton(window, GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS
 
-        if (pressed && !wasPressed[0]) {
+        if (pressed && !wasPressed) {
             if (player.isShiftKeyDown) checkAndOpenScreen()
         }
-        wasPressed[0] = pressed
+        wasPressed = pressed
 
         if (focusMode && hoveredDisplayScreen != null) {
             player.addEffect(MobEffectInstance(MobEffects.BLINDNESS, 20 * 2, 1, false, false, false))
-            wasFocused.set(true)
-        } else if (!focusMode && wasFocused.get()) {
+            wasFocused = true
+        } else if (!focusMode && wasFocused) {
             player.removeEffect(MobEffects.BLINDNESS)
-            wasFocused.set(false)
+            wasFocused = false
         }
     }
 
@@ -308,12 +285,9 @@ object Initializer {
     }
 
     fun onClearCachePacket(packet: Packets.ClearCache) {
-        for (displayUuid in packet.displayUuids) {
-            DisplayManager.screens[displayUuid]?.let {
-                it.unregister()
-                DisplayManager.screens.remove(displayUuid)
-            }
-            DisplaySettings.removeDisplay(displayUuid)
+        packet.displayUuids.forEach { uuid ->
+            DisplayManager.screens.remove(uuid)?.unregister()
+            DisplaySettings.removeDisplay(uuid)
         }
     }
 }

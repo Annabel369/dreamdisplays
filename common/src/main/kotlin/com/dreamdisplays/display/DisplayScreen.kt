@@ -66,9 +66,8 @@ class DisplayScreen(
         }
     private var videoStarted: Boolean = false
     private var paused: Boolean = savedSettings.paused
-    private var savedTimeNanos: Long = 0
     var renderDistance: Int = 64
-        private set
+    var savedTimeNanos: Long = 0
     private var mediaPlayer: MediaPlayer? = null
     var videoUrl: String? = null
         private set
@@ -264,7 +263,7 @@ class DisplayScreen(
         restoreSavedTime()
     }
 
-    fun getPaused(): Boolean = paused
+    val isPaused: Boolean get() = paused
 
     fun setPaused(paused: Boolean) {
         if (!videoStarted) {
@@ -349,14 +348,6 @@ class DisplayScreen(
         Initializer.sendPacket(Packets.Sync(uuid, isSync, paused, mp.getCurrentTime(), mp.getDuration()))
     }
 
-    fun setRenderDistance(distance: Int) {
-        renderDistance = distance
-    }
-
-    fun setSavedTimeNanos(timeNanos: Long) {
-        savedTimeNanos = timeNanos
-    }
-
     fun restoreSavedTime() {
         val mp = mediaPlayer ?: return
         if (savedTimeNanos > 0 && mp.isInitialized() && mp.canSeek()) {
@@ -366,15 +357,15 @@ class DisplayScreen(
 
     fun canSeek(): Boolean = mediaPlayer?.canSeek() == true
 
-    fun waitForMFInit(action: Runnable) = waitForMFInit(mediaPlayerGeneration.get(), action)
+    fun waitForMFInit(action: () -> Unit) = waitForMFInit(mediaPlayerGeneration.get(), action)
 
-    private fun waitForMFInit(expectedGeneration: Long, action: Runnable) {
+    private fun waitForMFInit(expectedGeneration: Long, action: () -> Unit) {
         val mp = mediaPlayer ?: return
         mp.whenInitialized {
             if (expectedGeneration != mediaPlayerGeneration.get()) return@whenInitialized
             if (mp !== mediaPlayer) return@whenInitialized
             if (errored) return@whenInitialized
-            action.run()
+            action()
         }
     }
 
