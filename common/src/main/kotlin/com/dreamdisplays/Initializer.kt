@@ -37,9 +37,7 @@ object Initializer {
     private val lastLevel = AtomicReference<ClientLevel?>(null)
     private val wasFocused = AtomicBoolean(false)
 
-
     var config: Config = Config(File("./config/$MOD_ID"))
-
 
     val timerThread: Thread = Thread({
         var running = true
@@ -64,7 +62,6 @@ object Initializer {
     private var hoveredDisplayScreen: DisplayScreen? = null
     private lateinit var mod: Mod
 
-
     fun onModInit(dreamDisplaysMod: Mod) {
         mod = dreamDisplaysMod
         LoggingManager.setLogger(LoggerFactory.getLogger(MOD_ID))
@@ -80,7 +77,6 @@ object Initializer {
 
         timerThread.start()
     }
-
 
     fun onDisplayInfoPacket(packet: Packets.Info) {
         if (!displaysEnabled) return
@@ -131,13 +127,11 @@ object Initializer {
         )
     }
 
-
     fun onDisplayEnabledPacket(packet: Packets.DisplayEnabled) {
         displaysEnabled = packet.enabled
         config.displaysEnabled = packet.enabled
         config.save()
     }
-
 
     fun createScreen(
         uuid: UUID, ownerUuid: UUID, pos: Vector3i, facingUtil: FacingUtil,
@@ -154,7 +148,6 @@ object Initializer {
         DisplayManager.registerScreen(displayScreen)
         if (code != "") displayScreen.loadVideo(code, lang)
     }
-
 
     fun onSyncPacket(packet: Packets.Sync) {
         if (!DisplayManager.screens.containsKey(packet.uuid)) return
@@ -187,7 +180,6 @@ object Initializer {
             LoggingManager.error("Unable to get version", e)
         }
     }
-
 
     fun onEndTick(minecraft: Minecraft) {
         val level = minecraft.level
@@ -290,11 +282,9 @@ object Initializer {
         hoveredDisplayScreen?.let { DisplayMenu.open(it) }
     }
 
-
     fun sendPacket(packet: CustomPacketPayload) {
         mod.sendPacket(packet)
     }
-
 
     fun onDeletePacket(packet: Packets.Delete) {
         DisplayManager.screens[packet.uuid]?.let { DisplayManager.unregisterScreen(it) }
@@ -303,7 +293,6 @@ object Initializer {
         LoggingManager.info("Display deleted and removed from saved data: ${packet.uuid}")
     }
 
-
     fun onStop() {
         DisplayManager.saveAllScreens()
         timerThread.interrupt()
@@ -311,16 +300,13 @@ object Initializer {
         Focuser.instance.interrupt()
     }
 
-
     fun onPremiumPacket(packet: Packets.Premium) {
         isPremium = packet.premium
     }
 
-
     fun onReportEnabledPacket(packet: Packets.ReportEnabled) {
         isReportingEnabled = packet.enabled
     }
-
 
     fun onClearCachePacket(packet: Packets.ClearCache) {
         for (displayUuid in packet.displayUuids) {
