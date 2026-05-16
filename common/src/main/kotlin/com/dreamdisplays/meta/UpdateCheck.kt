@@ -87,20 +87,15 @@ object UpdateCheck {
         return runCatching { obj.get(key).asString }.getOrNull()
     }
 
-    private fun compareVersions(a: String, b: String): Int = try {
+    private fun compareVersions(a: String, b: String): Int = runCatching {
         val aa = a.split('.', '-', '+')
         val bb = b.split('.', '-', '+')
-        val n = minOf(aa.size, bb.size)
-        var result = 0
-        for (i in 0 until n) {
-            if (aa[i] == bb[i]) continue
-            val ai = aa[i].toIntOrNull()
-            val bi = bb[i].toIntOrNull()
-            result = if (ai != null && bi != null) ai.compareTo(bi) else aa[i].compareTo(bb[i])
-            if (result != 0) return result
-        }
-        aa.size.compareTo(bb.size)
-    } catch (_: Exception) {
-        a.compareTo(b)
-    }
+        aa.zip(bb).firstNotNullOfOrNull { (x, y) ->
+            if (x == y) return@firstNotNullOfOrNull null
+            val ai = x.toIntOrNull()
+            val bi = y.toIntOrNull()
+            val cmp = if (ai != null && bi != null) ai.compareTo(bi) else x.compareTo(y)
+            cmp.takeIf { it != 0 }
+        } ?: aa.size.compareTo(bb.size)
+    }.getOrElse { a.compareTo(b) }
 }

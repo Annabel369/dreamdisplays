@@ -209,38 +209,19 @@ object FFmpegBinary {
     private fun detectPlatform(): Platform? {
         val os = System.getProperty("os.name", "").lowercase(Locale.ENGLISH)
         val arch = System.getProperty("os.arch", "").lowercase(Locale.ENGLISH)
-        val isArm = arch.contains("aarch64") || arch.contains("arm64") || arch == "arm"
-
-        if ("win" in os) {
-            if (isArm) return null
-            return Platform(
-                "windows-x64",
-                "$BTBN_BASE/ffmpeg-master-latest-win64-gpl.zip",
-                "ffmpeg.exe", "/bin/ffmpeg.exe", false
-            )
-        }
-        if ("mac" in os) {
-            return if (isArm)
-                Platform(
-                    "macos-aarch64", "https://www.osxexperts.net/ffmpeg71arm.zip",
-                    "ffmpeg", "ffmpeg", false
-                )
+        val isArm = "aarch64" in arch || "arm64" in arch || arch == "arm"
+        return when {
+            "win" in os -> if (isArm) null else
+                Platform("windows-x64", "$BTBN_BASE/ffmpeg-master-latest-win64-gpl.zip", "ffmpeg.exe", "/bin/ffmpeg.exe", false)
+            "mac" in os -> if (isArm)
+                Platform("macos-aarch64", "https://www.osxexperts.net/ffmpeg71arm.zip", "ffmpeg", "ffmpeg", false)
             else
-                Platform(
-                    "macos-x64", "https://evermeet.cx/ffmpeg/getrelease/zip",
-                    "ffmpeg", "ffmpeg", false
-                )
+                Platform("macos-x64", "https://evermeet.cx/ffmpeg/getrelease/zip", "ffmpeg", "ffmpeg", false)
+            else -> if (isArm)
+                Platform("linux-aarch64", "$BTBN_BASE/ffmpeg-master-latest-linuxarm64-gpl.tar.xz", "ffmpeg", "/bin/ffmpeg", true)
+            else
+                Platform("linux-x64", "$BTBN_BASE/ffmpeg-master-latest-linux64-gpl.tar.xz", "ffmpeg", "/bin/ffmpeg", true)
         }
-        return if (isArm)
-            Platform(
-                "linux-aarch64", "$BTBN_BASE/ffmpeg-master-latest-linuxarm64-gpl.tar.xz",
-                "ffmpeg", "/bin/ffmpeg", true
-            )
-        else
-            Platform(
-                "linux-x64", "$BTBN_BASE/ffmpeg-master-latest-linux64-gpl.tar.xz",
-                "ffmpeg", "/bin/ffmpeg", true
-            )
     }
 
     private data class Platform(
