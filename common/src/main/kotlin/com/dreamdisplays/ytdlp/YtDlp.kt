@@ -19,6 +19,7 @@ import java.nio.file.StandardCopyOption
 import java.nio.file.attribute.PosixFilePermissions
 import java.util.Collections
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionException
 import java.util.concurrent.ConcurrentHashMap
@@ -93,7 +94,7 @@ object YtDlp {
 
         val future = startFetchInternal(videoUrl)
         try {
-            return future.get(90, TimeUnit.SECONDS)
+            return future.get()
         } catch (e: CompletionException) {
             throw (e.cause as? IOException) ?: IOException("yt-dlp fetch failed for url: $videoUrl", e.cause ?: e)
         } catch (e: Exception) {
@@ -230,7 +231,7 @@ object YtDlp {
         return null
     }
 
-    private fun addCookieArgs(args: MutableList<String>) {
+    private fun addCookieArgs(args: MutableList<String>): Path? {
         val proxy = Initializer.config.ytdlpProxy.trim()
         if (proxy.isNotEmpty()) {
             args.add("--proxy")
@@ -238,20 +239,42 @@ object YtDlp {
         }
         val cookieFile = BUNDLED_DIR.resolve("cookies.txt")
         if (Files.exists(cookieFile)) {
+            val tempCookies = try {
+                val target = Files.createTempFile(BUNDLED_DIR, "cookies-", ".txt")
+                Files.copy(cookieFile, target, StandardCopyOption.REPLACE_EXISTING)
+                target
+            } catch (e: IOException) {
+                LoggingManager.warn("[YtDlp] failed to create temp cookies copy, using master file: ${e.message}")
+                null
+            }
+            args.add("--cookies")
+            args.add((tempCookies ?: cookieFile).toString())
             try {
                 val age = System.currentTimeMillis() - Files.getLastModifiedTime(cookieFile).toMillis()
-                if (age < COOKIE_REFRESH_MS) {
-                    args.add("--cookies")
-                    args.add(cookieFile.toString())
-                    return
+                if (age >= COOKIE_REFRESH_MS) {
+                    refreshCookiesAsync()
                 }
-            } catch (e: IOException) {
-                LoggingManager.warn("[YtDlp] could not read cookies.txt modification time, falling back to browser cookies: ${e.message}")
-            }
+            } catch (_: IOException) { }
+            return tempCookies
         }
         resolveCookieBrowser()?.let {
             args.add("--cookies-from-browser")
             args.add(it)
+        }
+        return null
+    }
+
+    private val cookieRefreshInProgress = AtomicBoolean(false)
+
+    private fun refreshCookiesAsync() {
+        if (!cookieRefreshInProgress.compareAndSet(false, true)) return
+        PREWARM_EXECUTOR.submit {
+            try {
+                exportCookieHeader()
+            } catch (_: Exception) {
+            } finally {
+                cookieRefreshInProgress.set(false)
+            }
         }
     }
 
@@ -297,9 +320,10 @@ object YtDlp {
         val binary = resolveBinary()
         val cmd = ArrayList<String>()
         cmd.add(binary)
-        addCookieArgs(cmd)
+        val tempCookies = addCookieArgs(cmd)
 
-        if (resolveCookieBrowser() == null && !Files.exists(BUNDLED_DIR.resolve("cookies.txt"))) {
+        val hasCookieArg = cmd.any { it == "--cookies" || it == "--cookies-from-browser" }
+        if (!hasCookieArg) {
             cmd.addAll(listOf("--extractor-args", "youtube:player_client=mweb"))
         }
 
@@ -313,6 +337,7 @@ object YtDlp {
         val pb = ProcessBuilder(cmd)
         pb.redirectErrorStream(false)
         val process = pb.start()
+        try { process.outputStream.close() } catch (_: IOException) { }
         val stdout = StringBuilder()
         val stderr = StringBuilder()
         val stdoutReader = streamReader(process.inputStream, stdout, "YtDlp-stdout")
@@ -320,11 +345,18 @@ object YtDlp {
         stdoutReader.start()
         stderrReader.start()
         try {
-            if (!process.waitFor(30, TimeUnit.SECONDS)) {
+            if (!process.waitFor(60, TimeUnit.SECONDS)) {
+                val pid = try { process.pid() } catch (_: Exception) { -1L }
+                val alive = process.isAlive
                 process.destroyForcibly()
                 stdoutReader.join(2_000)
                 stderrReader.join(2_000)
-                LoggingManager.warn("[YtDlp] fetch timeout after 30s for $videoUrl (stderr: ${stderr.toString().trim()})")
+                LoggingManager.warn(
+                    "[YtDlp] fetch timeout after 60s for $videoUrl " +
+                        "(pid=$pid, alive=$alive, stdoutBytes=${stdout.length}, stderrBytes=${stderr.length}, " +
+                        "stderrTail=${stderr.takeLast(500).trim()}, " +
+                        "stdoutTail=${stdout.takeLast(200).trim()})"
+                )
                 throw IOException("yt-dlp timed out for url: $videoUrl")
             }
             stdoutReader.join(5_000)
@@ -333,6 +365,8 @@ object YtDlp {
             process.destroyForcibly()
             Thread.currentThread().interrupt()
             throw IOException("Interrupted while waiting for yt-dlp", e)
+        } finally {
+            if (tempCookies != null) try { Files.deleteIfExists(tempCookies) } catch (_: IOException) { }
         }
         if (process.exitValue() != 0) {
             throw IOException("yt-dlp exited with code ${process.exitValue()}: ${stderr.toString().trim()}")
@@ -397,6 +431,7 @@ object YtDlp {
             "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
         pb.redirectErrorStream(true)
         val p = pb.start()
+        try { p.outputStream.close() } catch (_: IOException) { }
         p.inputStream.use { it.readAllBytes() }
         try {
             if (!p.waitFor(20, TimeUnit.SECONDS)) {
@@ -625,6 +660,7 @@ object YtDlp {
                 "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
             pb.redirectErrorStream(true)
             val p = pb.start()
+            try { p.outputStream.close() } catch (_: IOException) { }
             p.inputStream.use { it.readAllBytes() }
             if (!p.waitFor(15, TimeUnit.SECONDS)) {
                 p.destroyForcibly()
@@ -699,6 +735,7 @@ object YtDlp {
             val pb = ProcessBuilder(path, "--version")
             pb.redirectErrorStream(true)
             val p = pb.start()
+            try { p.outputStream.close() } catch (_: IOException) { }
             p.inputStream.use { it.readAllBytes() }
             if (!p.waitFor(30, TimeUnit.SECONDS)) {
                 p.destroyForcibly()
