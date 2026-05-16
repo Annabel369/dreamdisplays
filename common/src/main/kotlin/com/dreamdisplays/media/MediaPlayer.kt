@@ -18,6 +18,7 @@ import java.io.InputStreamReader
 import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
@@ -104,6 +105,8 @@ class MediaPlayer(
     @Volatile private var currentAudioStream: YtStream? = null
 
     @Volatile private var _initialized = false
+    private val initCallbacks = CopyOnWriteArrayList<Runnable>()
+
     @Volatile private var liveStream = false
     @Volatile private var seekable = false
     @Volatile private var durationHintNanos = 0L
@@ -181,6 +184,19 @@ class MediaPlayer(
 
     fun isInitialized(): Boolean = _initialized
 
+    fun whenInitialized(cb: Runnable) {
+        if (_initialized) { cb.run(); return }
+        initCallbacks.add(cb)
+        // Guard against race: initialized between the check above and add
+        if (_initialized && initCallbacks.remove(cb)) cb.run()
+    }
+
+    private fun drainInitCallbacks(run: Boolean) {
+        val snapshot = initCallbacks.toList()
+        initCallbacks.clear()
+        if (run) snapshot.forEach { it.run() }
+    }
+
     fun isLive(): Boolean = liveStream
 
     fun canSeek(): Boolean = _initialized && seekable
@@ -246,6 +262,7 @@ class MediaPlayer(
     }
 
     private fun initialize() {
+        var success = false
         try {
             val videoId = GeneralUtil.extractVideoId(youtubeUrl)
             if (videoId.isNullOrEmpty()) {
@@ -292,6 +309,7 @@ class MediaPlayer(
             lastQuality = MediaStreamSelector.parseQuality(pickedVideo)
             fetchRetries = 0
             _initialized = true
+            success = true
 
             if (DEBUG) {
                 LoggingManager.info("[MP $debugLabel] video=$pickedVideo audio=$pickedAudio")
@@ -305,6 +323,8 @@ class MediaPlayer(
         } catch (e: Exception) {
             LoggingManager.error("Failed to initialize MediaPlayer", e)
             displayScreen.errored = true
+        } finally {
+            drainInitCallbacks(run = success)
         }
     }
 

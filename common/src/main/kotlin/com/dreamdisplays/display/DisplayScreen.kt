@@ -364,28 +364,13 @@ class DisplayScreen(
     fun waitForMFInit(action: Runnable) = waitForMFInit(mediaPlayerGeneration.get(), action)
 
     private fun waitForMFInit(expectedGeneration: Long, action: Runnable) {
-        val initWaitThread = Thread({
-            var attempts = INIT_WAIT_TIMEOUT_MS / INIT_WAIT_INTERVAL_MS
-            while (attempts-- > 0) {
-                if (expectedGeneration != mediaPlayerGeneration.get()) return@Thread
-                val currentPlayer = mediaPlayer
-                if (currentPlayer != null && currentPlayer.isInitialized()) {
-                    if (expectedGeneration != mediaPlayerGeneration.get() || currentPlayer !== mediaPlayer) return@Thread
-                    action.run()
-                    return@Thread
-                }
-                if (errored) return@Thread
-                try {
-                    Thread.sleep(INIT_WAIT_INTERVAL_MS.toLong())
-                } catch (_: InterruptedException) {
-                    Thread.currentThread().interrupt()
-                    return@Thread
-                }
-            }
-            LoggingManager.warn("Timed out waiting for media initialization for display $uuid")
-        }, "Screen-wait-init-$uuid")
-        initWaitThread.isDaemon = true
-        initWaitThread.start()
+        val mp = mediaPlayer ?: return
+        mp.whenInitialized {
+            if (expectedGeneration != mediaPlayerGeneration.get()) return@whenInitialized
+            if (mp !== mediaPlayer) return@whenInitialized
+            if (errored) return@whenInitialized
+            action.run()
+        }
     }
 
     private fun parseQualityOrDefault(): Int = try {
@@ -406,8 +391,6 @@ class DisplayScreen(
 
     companion object {
         private const val DEFAULT_QUALITY = 720
-        private const val INIT_WAIT_TIMEOUT_MS = 200_000
-        private const val INIT_WAIT_INTERVAL_MS = 25
         private const val SYNC_SEEK_TOLERANCE_NS = 750_000_000L
 
         private fun createRenderType(id: Identifier): RenderType = RenderType.create(
