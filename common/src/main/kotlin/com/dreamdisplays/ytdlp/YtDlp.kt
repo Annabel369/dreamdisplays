@@ -239,7 +239,8 @@ object YtDlp {
                     args.add(cookieFile.toString())
                     return
                 }
-            } catch (_: IOException) {
+            } catch (e: IOException) {
+                LoggingManager.warn("[YtDlp] could not read cookies.txt modification time, falling back to browser cookies: ${e.message}")
             }
         }
         resolveCookieBrowser()?.let {
@@ -390,7 +391,7 @@ object YtDlp {
             "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
         pb.redirectErrorStream(true)
         val p = pb.start()
-        p.inputStream.readAllBytes()
+        p.inputStream.use { it.readAllBytes() }
         try {
             if (!p.waitFor(20, TimeUnit.SECONDS)) {
                 p.destroyForcibly()
@@ -606,7 +607,8 @@ object YtDlp {
 
     private fun testCookieBrowser(binary: String, browser: String): Boolean {
         return try {
-            val testCookieFile = BUNDLED_DIR.resolve("cookie-test-$browser.txt")
+            val safeName = browser.replace(Regex("[^A-Za-z0-9_-]"), "_")
+            val testCookieFile = BUNDLED_DIR.resolve("cookie-test-$safeName.txt")
             Files.createDirectories(testCookieFile.parent)
             Files.deleteIfExists(testCookieFile)
 
@@ -617,7 +619,7 @@ object YtDlp {
                 "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
             pb.redirectErrorStream(true)
             val p = pb.start()
-            p.inputStream.readAllBytes()
+            p.inputStream.use { it.readAllBytes() }
             if (!p.waitFor(15, TimeUnit.SECONDS)) {
                 p.destroyForcibly()
                 return false
@@ -691,7 +693,7 @@ object YtDlp {
             val pb = ProcessBuilder(path, "--version")
             pb.redirectErrorStream(true)
             val p = pb.start()
-            p.inputStream.readAllBytes()
+            p.inputStream.use { it.readAllBytes() }
             if (!p.waitFor(30, TimeUnit.SECONDS)) {
                 p.destroyForcibly()
                 return false
