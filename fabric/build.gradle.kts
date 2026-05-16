@@ -43,6 +43,8 @@ tasks.jar {
     from(rootProject.file("LICENSE"))
 }
 
+tasks.named("validateAccessWidener") { enabled = false }
+
 tasks.shadowJar {
     configurations = listOf(project.configurations.getByName("shadow"))
     archiveBaseName = "dreamdisplays-fabric"
