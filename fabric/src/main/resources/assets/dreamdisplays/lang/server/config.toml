@@ -1,4 +1,5 @@
 # Dream Displays configuration
+# Fabric server implementation
 # Support: https://discord.gg/uwMMZ2KWk6
 
 [language]
@@ -7,8 +8,8 @@ default_language = "en"
 
 [display]
 # Selection tool and base material
-selection_material = "DIAMOND_AXE"
-base_material = "BLACK_CONCRETE"
+selection_material = "minecraft:diamond_axe"
+base_material = "minecraft:black_concrete"
 
 # Display size limits
 # All values are in blocks

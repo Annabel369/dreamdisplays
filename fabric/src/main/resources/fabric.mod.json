@@ -10,7 +10,10 @@
   ],
   "entrypoints": {
     "client": [
-      "com.dreamdisplays.DreamDisplaysMod"
+      "com.dreamdisplays.Client"
+    ],
+    "main": [
+      "com.dreamdisplays.Server"
     ]
   },
   "mixins": [

@@ -27,7 +27,7 @@ class Main : JavaPlugin() {
         instance = this
         Companion.config = Config(this)
         lifecycleManager.registerEventHandler(LifecycleEvents.COMMANDS) { event ->
-            event.registrar().register(CommandRegistrar.buildDisplayCommand(), "Main DreamDisplays command")
+            event.registrar().register(CommandRegistrar.buildDisplayCommand(), "Main Dream Displays command")
         }
     }
 
@@ -41,7 +41,7 @@ class Main : JavaPlugin() {
 
     fun doEnable() {
         @Suppress("DEPRECATION")
-        log("[Main] Enabling DreamDisplays ${description.version}...")
+        log("[Dream Displays] Enabling Dream Displays ${description.version}...")
 
         Scheduler.init(this)
 
@@ -55,7 +55,7 @@ class Main : JavaPlugin() {
     }
 
     fun doDisable() {
-        log("[Main] Disabling Dream Displays ${pluginMeta.version}...")
+        log("[Dream Displays] Disabling Dream Displays ${pluginMeta.version}...")
         storage.onDisable()
     }
 

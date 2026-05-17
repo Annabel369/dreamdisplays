@@ -9,34 +9,17 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents
-import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry
 import net.minecraft.client.Minecraft
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload
 
 @Suppress("UNUSED")
-class DreamDisplaysMod : ClientModInitializer, Mod {
+class Client : ClientModInitializer, Mod {
 
     override fun onInitializeClient() {
         Initializer.onModInit(this)
 
-        with(PayloadTypeRegistry.clientboundPlay()) {
-            register(Packets.Info.PACKET_ID, Packets.Info.PACKET_CODEC)
-            register(Packets.Sync.PACKET_ID, Packets.Sync.PACKET_CODEC)
-            register(Packets.Premium.PACKET_ID, Packets.Premium.PACKET_CODEC)
-            register(Packets.Delete.PACKET_ID, Packets.Delete.PACKET_CODEC)
-            register(Packets.DisplayEnabled.PACKET_ID, Packets.DisplayEnabled.PACKET_CODEC)
-            register(Packets.ReportEnabled.PACKET_ID, Packets.ReportEnabled.PACKET_CODEC)
-            register(Packets.ClearCache.PACKET_ID, Packets.ClearCache.PACKET_CODEC)
-        }
-
-        with(PayloadTypeRegistry.serverboundPlay()) {
-            register(Packets.Sync.PACKET_ID, Packets.Sync.PACKET_CODEC)
-            register(Packets.RequestSync.PACKET_ID, Packets.RequestSync.PACKET_CODEC)
-            register(Packets.Delete.PACKET_ID, Packets.Delete.PACKET_CODEC)
-            register(Packets.Report.PACKET_ID, Packets.Report.PACKET_CODEC)
-            register(Packets.Version.PACKET_ID, Packets.Version.PACKET_CODEC)
-            register(Packets.SetVideo.PACKET_ID, Packets.SetVideo.PACKET_CODEC)
-        }
+        // Note: PayloadTypeRegistry registrations are done in Server (it's a main entrypoint)
+        // which runs on both integrated and dedicated servers, before the client entrypoint.
 
         ClientPlayNetworking.registerGlobalReceiver(Packets.Info.PACKET_ID) { payload, _ ->
             Initializer.onDisplayInfoPacket(payload)
