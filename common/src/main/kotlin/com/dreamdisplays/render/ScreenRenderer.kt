@@ -57,7 +57,7 @@ object ScreenRenderer {
         stack.scale(displayScreen.width.toFloat(), displayScreen.height.toFloat(), 0f)
 
         if (displayScreen.isVideoStarted && displayScreen.texture != null && displayScreen.renderType != null) {
-            renderGpuTexture(stack, tessellator, displayScreen.renderType!!)
+            renderGpuTexture(stack, tessellator, displayScreen.renderType!!, displayScreen.brightness)
         } else if (displayScreen.renderType != null) {
             if (displayScreen.errored) {
                 renderColor(stack, tessellator, displayScreen.renderType!!, 35, 5, 5)
@@ -107,18 +107,15 @@ object ScreenRenderer {
         }
     }
 
-    private fun renderGpuTexture(stack: PoseStack, tesselator: Tesselator, type: RenderType) {
+    private fun renderGpuTexture(stack: PoseStack, tesselator: Tesselator, type: RenderType, brightness: Float) {
         val pose = stack.last().pose()
+        val c = (brightness.coerceIn(0f, 1f) * 255f + 0.5f).toInt()
         val builder: BufferBuilder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.BLOCK)
 
-        builder.addVertex(pose, 0f, 0f, 0f).setColor(255, 255, 255, 255).setUv(0f, 1f).setLight(0xF000F0)
-            .setNormal(0f, 0f, 1f)
-        builder.addVertex(pose, 1f, 0f, 0f).setColor(255, 255, 255, 255).setUv(1f, 1f).setLight(0xF000F0)
-            .setNormal(0f, 0f, 1f)
-        builder.addVertex(pose, 1f, 1f, 0f).setColor(255, 255, 255, 255).setUv(1f, 0f).setLight(0xF000F0)
-            .setNormal(0f, 0f, 1f)
-        builder.addVertex(pose, 0f, 1f, 0f).setColor(255, 255, 255, 255).setUv(0f, 0f).setLight(0xF000F0)
-            .setNormal(0f, 0f, 1f)
+        builder.addVertex(pose, 0f, 0f, 0f).setColor(c, c, c, 255).setUv(0f, 1f).setLight(0xF000F0).setNormal(0f, 0f, 1f)
+        builder.addVertex(pose, 1f, 0f, 0f).setColor(c, c, c, 255).setUv(1f, 1f).setLight(0xF000F0).setNormal(0f, 0f, 1f)
+        builder.addVertex(pose, 1f, 1f, 0f).setColor(c, c, c, 255).setUv(1f, 0f).setLight(0xF000F0).setNormal(0f, 0f, 1f)
+        builder.addVertex(pose, 0f, 1f, 0f).setColor(c, c, c, 255).setUv(0f, 0f).setLight(0xF000F0).setNormal(0f, 0f, 1f)
 
         type.draw(builder.buildOrThrow())
     }
