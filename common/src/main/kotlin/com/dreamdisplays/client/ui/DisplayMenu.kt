@@ -155,14 +155,14 @@ class DisplayMenu private constructor() : Screen(Component.translatable("dreamdi
         brightness = object : SliderWidget(
             0, 0, 0, 0,
             Component.literal("${floor(ds.brightness.toDouble() * 100).toInt()}%"),
-            ds.brightness / 2.0
+            ds.brightness.toDouble().coerceIn(0.0, 1.0)
         ) {
             override fun updateMessage() {
-                message = Component.literal("${floor(value * 200).toInt()}%")
+                message = Component.literal("${floor(value * 100).toInt()}%")
             }
 
             override fun applyValue() {
-                ds.brightness = (value * 2.0).toFloat()
+                ds.brightness = value.toFloat()
             }
         }
 
@@ -184,7 +184,7 @@ class DisplayMenu private constructor() : Screen(Component.translatable("dreamdi
         brightnessReset = resetButton {
             ds.brightness = 1.0f
             brightness?.let {
-                it.value = 0.5
+                it.value = 1.0
                 it.message = Component.literal("100%")
             }
         }
