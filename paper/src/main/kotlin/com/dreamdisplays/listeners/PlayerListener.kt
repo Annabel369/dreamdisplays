@@ -17,6 +17,11 @@ import org.bukkit.event.player.PlayerJoinEvent
 import org.bukkit.event.player.PlayerQuitEvent
 import org.jspecify.annotations.NullMarked
 
+/**
+ * Handles player join and leave events.
+ *
+ * `Paper` implementation.
+ */
 @NullMarked
 @Suppress("UNUSED")
 class PlayerListener : Listener {

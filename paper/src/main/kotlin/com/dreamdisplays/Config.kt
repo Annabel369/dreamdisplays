@@ -14,6 +14,8 @@ import java.nio.file.StandardCopyOption
 
 /**
  * Manages the configuration of the plugin.
+ *
+ * `Paper` implementation.
  */
 @NullMarked
 class Config(private val plugin: Main) {

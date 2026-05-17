@@ -5,8 +5,8 @@ import com.dreamdisplays.utils.MessageUtil.sendColoredMessage
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 
+// TODO: for removing in stable 1.7.0
 class HelpCommand : SubCommand {
-
     override val name = "help"
     override val permission = config.permissions.help
     override val playerOnly = true

@@ -10,8 +10,8 @@ import org.bukkit.Bukkit
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 
+// TODO: for removing in stable 1.7.0
 class OnCommand : SubCommand {
-
     override val name = "on"
     override val permission: String? = null
     override val playerOnly = false

@@ -5,6 +5,8 @@ import org.jspecify.annotations.NullMarked
 
 /**
  * An adapter interface for scheduling asynchronous tasks for different server implementations.
+ *
+ * `Paper` implementation.
  */
 @NullMarked
 interface AdapterScheduler {

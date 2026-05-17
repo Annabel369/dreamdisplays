@@ -21,6 +21,8 @@ import org.bukkit.inventory.EquipmentSlot.HAND
  * Players can set selection points by interacting with blocks while holding the designated selection material.
  * Left-clicking sets the first point, right-clicking sets the second point.
  * Sneaking and right-clicking resets the selection.
+ *
+ * `Paper` implementation.
  */
 class SelectionListener(plugin: Main) : Listener {
 

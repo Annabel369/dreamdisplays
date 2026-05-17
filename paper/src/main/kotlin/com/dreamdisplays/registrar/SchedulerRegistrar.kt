@@ -7,6 +7,8 @@ import com.dreamdisplays.scheduler.ProviderScheduler
 
 /**
  * Manages the registration of scheduled tasks.
+ *
+ * `Paper` implementation.
  */
 object SchedulerRegistrar {
     private const val TICKS_PER_SECOND = 20L

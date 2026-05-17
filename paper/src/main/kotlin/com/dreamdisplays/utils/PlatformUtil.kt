@@ -1,7 +1,9 @@
 package com.dreamdisplays.utils
 
 /**
- * Platform-specific checks. Right now it includes Folia detection.
+ * Platform-specific checks. Right now it includes `Folia` detection.
+ *
+ * `Paper` implementation.
  */
 object PlatformUtil {
 

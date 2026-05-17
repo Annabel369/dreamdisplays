@@ -9,6 +9,11 @@ import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 import org.jspecify.annotations.NullMarked
 
+/**
+ * Message utilities.
+ *
+ * `Paper` implementation.
+ */
 @NullMarked
 object MessageUtil {
     private val gson by lazy { Gson() }

@@ -15,6 +15,7 @@ import org.bukkit.command.CommandSender
  * @param args The arguments passed to the sub-command.
  * @see CommandSender
  */
+// TODO: for removing in stable 1.7.0
 interface SubCommand {
     val name: String
     val permission: String?

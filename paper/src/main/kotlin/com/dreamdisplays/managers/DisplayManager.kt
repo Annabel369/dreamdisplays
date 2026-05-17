@@ -23,6 +23,8 @@ import java.util.function.Consumer
 
 /**
  * Manages all displays in the server.
+ *
+ * `Paper` implementation.
  */
 @NullMarked
 object DisplayManager {

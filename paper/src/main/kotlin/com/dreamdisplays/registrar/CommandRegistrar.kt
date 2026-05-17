@@ -11,6 +11,11 @@ import io.papermc.paper.command.brigadier.Commands
 import org.bukkit.Bukkit
 import org.bukkit.entity.Player
 
+/**
+ * Command registrar.
+ *
+ * `Paper` implementation.
+ */
 @Suppress("UnstableApiUsage")
 object CommandRegistrar {
 

@@ -8,6 +8,9 @@ import java.util.*
 
 /**
  * Data class representing a display in the Minecraft world.
+ *
+ * `Paper` implementation.
+ *
  * @param id Unique identifier for the display.
  * @param ownerId Unique identifier for the owner of the display.
  * @param pos1 One corner of the display area.

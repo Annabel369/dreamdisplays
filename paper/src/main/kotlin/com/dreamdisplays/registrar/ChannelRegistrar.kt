@@ -5,6 +5,8 @@ import com.dreamdisplays.utils.net.PacketReceiver
 
 /**
  * Manages the registration of plugin channels for incoming and outgoing messages.
+ *
+ * `Paper` implementation.
  */
 object ChannelRegistrar {
 

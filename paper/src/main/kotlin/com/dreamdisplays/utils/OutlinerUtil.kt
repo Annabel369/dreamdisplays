@@ -8,6 +8,8 @@ import java.util.*
 
 /**
  * Utility object for outlining areas with particles.
+ *
+ * `Paper` implementation.
  */
 @NullMarked
 object OutlinerUtil {

@@ -15,10 +15,12 @@ import java.nio.charset.StandardCharsets
 import java.util.*
 
 /**
- * Utility object for sending packets to players in the `DreamDisplays` plugin.
+ * Utility object for sending packets to players.
  *
  * Provides methods to send various types of packets to players,
  * including display info, sync data, delete commands, and settings updates.
+ *
+ * `Paper` implementation.
  */
 @NullMarked
 object PacketUtil {

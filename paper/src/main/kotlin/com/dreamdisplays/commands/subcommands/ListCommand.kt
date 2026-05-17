@@ -16,6 +16,7 @@ import org.bukkit.entity.Player
 import java.util.*
 import kotlin.math.max
 
+// TODO: for removing in stable 1.7.0
 class ListCommand : SubCommand {
     private companion object {
         const val PAGE_SIZE = 10

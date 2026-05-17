@@ -7,6 +7,8 @@ import java.util.*
 /**
  * Class to manage the state data of a display.
  *
+ * `Paper` implementation.
+ *
  * @property id The unique identifier of the display.
  * @property displayData The display data.
  * @property paused Boolean indicating if the display is paused.

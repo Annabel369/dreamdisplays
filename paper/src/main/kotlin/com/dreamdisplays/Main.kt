@@ -13,6 +13,11 @@ import org.bstats.bukkit.Metrics
 import org.bukkit.plugin.java.JavaPlugin
 import org.jspecify.annotations.NullMarked
 
+/**
+ * Entry point of plugin.
+ *
+ * `Paper` implementation.
+ */
 @NullMarked
 @Suppress("UnstableApiUsage")
 class Main : JavaPlugin() {

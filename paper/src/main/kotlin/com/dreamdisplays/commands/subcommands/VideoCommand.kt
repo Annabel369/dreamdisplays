@@ -10,8 +10,8 @@ import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 import java.util.*
 
+// TODO: for removing in stable 1.7.0
 class VideoCommand : SubCommand {
-
     override val name = "video"
     override val permission = Main.config.permissions.video
     override val playerOnly = true

@@ -8,6 +8,7 @@ import org.bukkit.Bukkit
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 
+// TODO: for removing in stable 1.7.0
 class InfoCommand : SubCommand {
     override val name = "info"
     override val permission = Main.config.permissions.info

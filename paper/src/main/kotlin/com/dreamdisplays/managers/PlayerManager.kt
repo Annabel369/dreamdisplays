@@ -7,6 +7,8 @@ import java.util.*
 
 /**
  * Manages player-specific data such as versions and notification states.
+ *
+ * `Paper` implementation.
  */
 @NullMarked
 object PlayerManager {

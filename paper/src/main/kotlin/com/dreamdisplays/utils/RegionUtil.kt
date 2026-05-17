@@ -8,6 +8,8 @@ import kotlin.math.min
 
 /**
  * Utils for 3D region calculations and boundary checks.
+ *
+ * `Paper` implementation.
  */
 @NullMarked
 object RegionUtil {

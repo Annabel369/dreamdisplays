@@ -5,6 +5,11 @@ import org.bukkit.plugin.Plugin
 import org.jspecify.annotations.NullMarked
 import java.lang.reflect.Proxy
 
+/**
+ * Plugin scheduler.
+ *
+ * `Paper` implementation.
+ */
 @NullMarked
 object Scheduler {
 

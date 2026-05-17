@@ -16,6 +16,8 @@ import java.util.*
 
 /**
  * Utility object for sending reports to a Discord webhook.
+ *
+ * `Paper` implementation.
  */
 // TODO: add rate limiting to prevent spam
 // TODO: customize embed further (add more fields, etc.)

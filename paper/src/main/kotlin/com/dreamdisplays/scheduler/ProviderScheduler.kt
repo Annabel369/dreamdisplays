@@ -5,7 +5,9 @@ import org.jspecify.annotations.NullMarked
 
 /**
  * A provider object that selects the appropriate `AdapterScheduler` implementation
- * based on the server environment (Folia or Bukkit).
+ * based on the server environment (`Folia` or `Paper`).
+ *
+ * `Paper` implementation.
  */
 @NullMarked
 object ProviderScheduler {

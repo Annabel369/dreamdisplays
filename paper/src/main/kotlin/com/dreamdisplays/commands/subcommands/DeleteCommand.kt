@@ -7,8 +7,8 @@ import com.dreamdisplays.utils.MessageUtil.sendMessage
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 
+// TODO: for removing in stable 1.7.0
 class DeleteCommand : SubCommand {
-
     override val name = "delete"
     override val permission = config.permissions.delete
     override val playerOnly = true

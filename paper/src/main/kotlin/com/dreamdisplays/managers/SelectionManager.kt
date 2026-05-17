@@ -10,6 +10,8 @@ import java.util.*
 
 /**
  * Manages player selections for display creation.
+ *
+ * `Paper` implementation.
  */
 object SelectionManager {
     val selectionPoints = mutableMapOf<UUID, SelectionData>()

@@ -5,6 +5,11 @@ import com.dreamdisplays.datatypes.SelectionData
 import com.dreamdisplays.utils.MessageUtil.sendMessage
 import org.bukkit.entity.Player
 
+/**
+ * Validates the display.
+ *
+ * `Paper` implementation.
+ */
 object DisplayValidator {
     private const val VALID_DISPLAY = 6
 

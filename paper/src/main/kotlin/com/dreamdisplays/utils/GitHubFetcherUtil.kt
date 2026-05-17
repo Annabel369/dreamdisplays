@@ -13,6 +13,11 @@ import java.net.http.HttpRequest.newBuilder
 import java.net.http.HttpResponse.BodyHandlers.ofString
 import java.time.Duration
 
+/**
+ * GitHub version fetcher.
+ *
+ * `Paper` implementation.
+ */
 @NullMarked
 object GitHubFetcherUtil {
     private val gson = Gson()

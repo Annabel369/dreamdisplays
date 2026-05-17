@@ -13,6 +13,9 @@ import java.util.UUID.randomUUID
 
 /**
  * Player's current selection for a feature display.
+ *
+ * `Paper` implementation.
+ *
  * @param player The player making the selection.
  *
  * @property pos1 One corner of the selected area.

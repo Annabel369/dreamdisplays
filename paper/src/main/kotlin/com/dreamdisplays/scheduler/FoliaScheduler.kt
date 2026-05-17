@@ -5,7 +5,9 @@ import org.jspecify.annotations.NullMarked
 import java.lang.reflect.Proxy
 
 /**
- * A Folia implementation of the `AdapterScheduler` for scheduling asynchronous tasks.
+ * A `Folia` implementation of the `AdapterScheduler` for scheduling asynchronous tasks.
+ *
+ * `Paper` implementation.
  */
 @NullMarked
 object FoliaScheduler : AdapterScheduler {

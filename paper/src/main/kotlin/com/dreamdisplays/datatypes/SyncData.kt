@@ -6,6 +6,8 @@ import java.util.*
 /**
  * Synchronization data for a display.
  *
+ * `Paper` implementation.
+ *
  * @param id Unique identifier for the display.
  * @param isSync Boolean indicating if the display is synchronized.
  * @param currentState Current playback state (e.g. playing or paused).

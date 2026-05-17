@@ -10,6 +10,7 @@ import org.jspecify.annotations.NullMarked
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
+/** Manages sync (playback state) for displays server-side. */
 @NullMarked
 object StateManager {
     private val playStates: MutableMap<UUID, StateData> = ConcurrentHashMap()

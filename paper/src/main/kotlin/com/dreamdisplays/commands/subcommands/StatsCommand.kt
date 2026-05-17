@@ -7,8 +7,8 @@ import com.dreamdisplays.utils.MessageUtil.sendMessage
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 
+// TODO: for removing in stable 1.7.0
 class StatsCommand : SubCommand {
-
     override val name = "stats"
     override val permission = config.permissions.stats
 

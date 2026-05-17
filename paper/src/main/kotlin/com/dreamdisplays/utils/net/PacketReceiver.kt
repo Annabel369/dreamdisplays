@@ -40,6 +40,8 @@ import java.util.*
 
 /**
  * Handles incoming channels from clients.
+ *
+ * `Paper` implementation.
  */
 @NullMarked
 class PacketReceiver(private val plugin: Main) : PluginMessageListener {

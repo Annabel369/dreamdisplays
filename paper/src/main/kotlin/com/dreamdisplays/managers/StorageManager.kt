@@ -19,6 +19,8 @@ import java.util.*
 
 /**
  * Manages storage and retrieval of display data from the database.
+ *
+ * `Paper` implementation.
  */
 @NullMarked
 class StorageManager(var plugin: Main) {

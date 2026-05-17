@@ -4,8 +4,8 @@ import com.dreamdisplays.Main.Companion.config
 import com.dreamdisplays.utils.MessageUtil.sendMessage
 import org.bukkit.command.CommandSender
 
+// TODO: for removing in stable 1.7.0
 class ReloadCommand : SubCommand {
-
     override val name = "reload"
     override val permission = config.permissions.reload
 

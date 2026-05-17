@@ -6,6 +6,8 @@ import java.util.*
 
 /**
  * Utility functions for handling YouTube URLs and video IDs.
+ *
+ * `Paper` implementation.
  */
 @NullMarked
 object YouTubeUtil {

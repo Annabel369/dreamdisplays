@@ -7,6 +7,11 @@ import com.dreamdisplays.utils.OutlinerUtil.showOutline
 import com.dreamdisplays.utils.PlatformUtil.isFolia
 import org.bukkit.Bukkit
 
+/**
+ * Selection visualizer.
+ *
+ * `Paper` implementation.
+ */
 object SelectionVisualizer {
     fun startParticleTask(plugin: Main) {
         if (!config.settings.particlesEnabled) return
