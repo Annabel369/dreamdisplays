@@ -7,10 +7,14 @@ Download from [Modrinth](https://modrinth.com/plugin/dreamdisplays)!
 
 ## Available for Fabric, NeoForge, Quilt and popular server forks
 
+Dream Displays also supports Fabric servers! No Paper or hybrid server software required.
+
 Create interactive in-game displays that stream YouTube videos in real time, with smooth playback, configurable
 resolution and even with synchronization mode for all players on the server.
 
-For this mod to work, players install the client mod, while server admins only need to install the server plugin.
+For this mod to work, players install the client mod, while server admins can install either:
+- Server plugin on Paper / Folia / Purpur or other fork
+- Fabric server mod on Fabric servers
 
 ![img](https://i.imgur.com/mzaeKQN.png)
 
@@ -24,15 +28,17 @@ For this mod to work, players install the client mod, while server admins only n
 - **Direct YouTube search and suggestions**
 - Adjustable resolutions from 144p up to 4K
 - Volume control from 0% to 200%
-- Brightness control from 0% to 200%
+- Brightness control from 0% to 100%
 - Multiple video languages support
 - Customizable displayScreen sizes in blocks
 - Integrated controls for play, pause, and seek
+- A lot of performance optimizations
 
 ### Server
 
 - **Screens and settings remain after server restarts or when unloaded**
 - **Simple and precise server-side configuration**
+- **Fabric server support (1:1 as Paper)**
 - Display commands – manage your in-game screens: create, delete, etc.
 - Fine-grained permissions for admin-only control
 
