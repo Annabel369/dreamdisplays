@@ -2,6 +2,7 @@ package com.dreamdisplays.display
 
 import com.dreamdisplays.Initializer
 import com.dreamdisplays.client.ui.DisplayMenu
+import com.dreamdisplays.client.ui.VideoPopoutWindow
 import com.dreamdisplays.player.MediaPlayer
 import com.dreamdisplays.net.Packets
 import com.dreamdisplays.ytdlp.YtDlp
@@ -77,6 +78,7 @@ class DisplayScreen(
     private var blockPos: BlockPos? = null
     var lang: String? = null
         private set
+    private var popoutWindow: VideoPopoutWindow? = null
 
     val isVideoStarted: Boolean get() = mediaPlayer?.textureFilled() == true
 
@@ -245,10 +247,33 @@ class DisplayScreen(
             mp.updateFrame(tex.getTexture())
         } catch (_: Exception) {
         }
+        popoutWindow?.renderFrame()
     }
 
     fun setVideoVolume(volume: Float) {
         mediaPlayer?.setVolume(volume)
+    }
+
+    fun togglePopout() {
+        if (!VideoPopoutWindow.isAvailable) return
+        val mp = mediaPlayer ?: return
+        val win = popoutWindow
+        if (win != null && win.isOpen) {
+            mp.setPopoutSink(null)
+            win.close()
+            return
+        }
+        try {
+            val w = textureWidth.takeIf { it > 0 } ?: 1280
+            val h = textureHeight.takeIf { it > 0 } ?: 720
+            val newWin = win ?: VideoPopoutWindow {
+                mediaPlayer?.setPopoutSink(null)
+            }.also { popoutWindow = it }
+            mp.setPopoutSink { buf, fw, fh -> newWin.updateFrame(buf, fw, fh) }
+            newWin.open(w, h)
+        } catch (e: Exception) {
+            LoggingManager.warn("[DisplayScreen] Could not open popout: ${e.message}")
+        }
     }
 
     fun startVideo() {
@@ -301,6 +326,7 @@ class DisplayScreen(
         videoStarted = false
         val currentPlayer = mediaPlayer
         mediaPlayer = null
+        currentPlayer?.setPopoutSink(null)
         currentPlayer?.stop()
 
         val mc = Minecraft.getInstance()

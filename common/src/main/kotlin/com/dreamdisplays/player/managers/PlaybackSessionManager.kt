@@ -66,6 +66,11 @@ internal class PlaybackSessionManager(
     /** Timestamp of the last decoded video frame; read by [StreamWatchdog]. */
     val lastFrameNanos: AtomicLong get() = video.lastFrameReceivedNanos
 
+    /** Routes raw RGB frames to the popout window. Null = no popout active. */
+    var popoutFrameSink: ((java.nio.ByteBuffer, Int, Int) -> Unit)?
+        get() = video.popoutFrameSink
+        set(value) { video.popoutFrameSink = value }
+
     /**
      * Stops any running session, then launches new `FFmpeg` processes for [streamSet]
      * starting at [offsetNanos]. Wires up the clock, brightness, and EOS callbacks.

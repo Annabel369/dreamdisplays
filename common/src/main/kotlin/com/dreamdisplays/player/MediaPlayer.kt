@@ -18,6 +18,7 @@ import com.dreamdisplays.ytdlp.YtDlp
 import com.mojang.blaze3d.textures.GpuTexture
 import me.inotsleep.utils.logging.LoggingManager
 import net.minecraft.core.BlockPos
+import java.nio.ByteBuffer
 import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -164,6 +165,11 @@ class MediaPlayer(
 
     /** Returns true once the wall clock is running (first frame has arrived). */
     fun isClockRunning(): Boolean = clock.isRunning
+
+    /** Connects or disconnects the popout window sink. Pass null to detach. */
+    fun setPopoutSink(sink: ((ByteBuffer, Int, Int) -> Unit)?) {
+        sessionManager.popoutFrameSink = sink
+    }
 
     /** True once the first decoded frame is ready for GPU upload. */
     fun textureFilled(): Boolean = sessionManager.textureFilled()

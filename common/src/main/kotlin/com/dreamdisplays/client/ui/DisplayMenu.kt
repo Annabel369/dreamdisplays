@@ -44,6 +44,7 @@ class DisplayMenu private constructor() : Screen(Component.translatable("dreamdi
     private var volumeReset: ButtonWidget? = null
     private var syncReset: ButtonWidget? = null
     private var muteButtonWidget: ButtonWidget? = null
+    private var popoutButtonWidget: ButtonWidget? = null
     private var deleteButtonWidget: ButtonWidget? = null
     private var reportButtonWidget: ButtonWidget? = null
     private var progress: ProgressSliderWidget? = null
@@ -110,6 +111,15 @@ class DisplayMenu private constructor() : Screen(Component.translatable("dreamdi
                         if (ds.muted) "mute" else "sound"
                     )
                 )
+            }
+        }
+
+        popoutButtonWidget = object : ButtonWidget(
+            0, 0, 0, 0, 64, 64,
+            Identifier.fromNamespaceAndPath(Initializer.MOD_ID, "popout"), 2
+        ) {
+            override fun onPress() {
+                ds.togglePopout()
             }
         }
 
@@ -260,6 +270,7 @@ class DisplayMenu private constructor() : Screen(Component.translatable("dreamdi
         addRenderableWidget(backButtonWidget!!)
         addRenderableWidget(forwardButtonWidget!!)
         addRenderableWidget(muteButtonWidget!!)
+        addRenderableWidget(popoutButtonWidget!!)
         addRenderableWidget(progress!!)
         addRenderableWidget(pauseButtonWidget!!)
         addRenderableWidget(renderD!!)
@@ -445,7 +456,8 @@ class DisplayMenu private constructor() : Screen(Component.translatable("dreamdi
         sync?.let { it.active = false; it.visible = false }
         listOf(
             backButtonWidget, forwardButtonWidget, pauseButtonWidget,
-            renderDReset, qualityReset, brightnessReset, volumeReset, syncReset, muteButtonWidget
+            renderDReset, qualityReset, brightnessReset, volumeReset, syncReset, muteButtonWidget,
+            popoutButtonWidget
         ).forEach { w ->
             w?.active = false; w?.visible = false
         }
@@ -559,6 +571,11 @@ class DisplayMenu private constructor() : Screen(Component.translatable("dreamdi
                 )
             )
         }
+        popoutButtonWidget?.let {
+            it.x = innerX + CTRL_BTN * 3 + 12; it.y = controlsRowY
+            it.width = CTRL_BTN; it.height = CTRL_BTN
+            it.active = scr.isVideoStarted && !scr.errored
+        }
         pauseButtonWidget?.let {
             it.x = controlsRight - CTRL_BTN; it.y = controlsRowY
             it.width = CTRL_BTN; it.height = CTRL_BTN
@@ -571,7 +588,7 @@ class DisplayMenu private constructor() : Screen(Component.translatable("dreamdi
             )
         }
         progress?.let {
-            val progX = innerX + CTRL_BTN * 3 + 12
+            val progX = innerX + CTRL_BTN * 4 + 16
             val progRight = controlsRight - CTRL_BTN - 4
             val progW = max(40, progRight - progX)
             it.x = progX; it.y = controlsRowY

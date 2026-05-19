@@ -40,6 +40,9 @@ internal class VideoFramePipe(private val debugLabel: String) {
     /** Updated by the reader thread on every frame; used by the watchdog to detect stalls. */
     val lastFrameReceivedNanos = AtomicLong(0)
 
+    /** Set by the popout window to receive raw RGB frames. Called on the reader thread. */
+    @Volatile var popoutFrameSink: ((ByteBuffer, Int, Int) -> Unit)? = null
+
     @Volatile var expectedW = 0
         private set
     @Volatile var expectedH = 0
@@ -193,6 +196,8 @@ internal class VideoFramePipe(private val debugLabel: String) {
                         videoPts += frameNs
                         continue
                     }
+
+                    popoutFrameSink?.let { sink -> sink(spare, w, h); spare.rewind() }
 
                     if (!MediaPlayer.captureSamples) { videoPts += frameNs; continue }
 
