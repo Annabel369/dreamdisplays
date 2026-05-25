@@ -138,7 +138,7 @@ class DisplayMenu private constructor() : Screen(Component.translatable("dreamdi
             { displayScreen?.mediaPlayerDurationNanos ?: 0L },
             { nanos ->
                 val cur = displayScreen
-                if (cur != null && cur.canSeek() && !cur.isLive) {
+                if (cur != null && cur.canSeek() && !cur.isLive && (!cur.isSync || cur.owner)) {
                     cur.seekToMillis(nanos / 1_000_000L)
                 }
             })
@@ -353,7 +353,7 @@ class DisplayMenu private constructor() : Screen(Component.translatable("dreamdi
         brightness?.active = videoReady && (!ds.isSync || ds.owner)
         sync?.active = videoReady && ds.owner
         deleteButtonWidget?.active = ds.owner
-        progress?.active = videoReady && ds.canSeek() && !ds.isLive
+        progress?.active = videoReady && ds.canSeek() && !ds.isLive && (!ds.isSync || ds.owner)
 
         if (ds.errored) {
             popoutDropdownVisible = false
