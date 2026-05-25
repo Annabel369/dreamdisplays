@@ -60,7 +60,6 @@ class MediaPlayer(
     private val events = PlayerEvents(
         onError = { state.set(PlaybackState.ERROR); displayScreen.errored = true },
         onSeek = { displayScreen.afterSeek() },
-        onFitTexture = { displayScreen.fitTexture() },
     )
 
     private val stats = StatsReporter(
@@ -364,12 +363,14 @@ class MediaPlayer(
     }
 
     /**
-     * Full teardown: clears the frame buffer, stops stats, stops the session, and nulls [streams].
+     * Full teardown: clears the frame buffer, stops stats, stops the session, releases GPU
+     * resources (PBOs), and nulls [streams].
      */
     private fun doStop() {
         sessionManager.clearFrame()
         stats.stop()
         stopSession()
+        sessionManager.cleanup()
         streams = null
     }
 

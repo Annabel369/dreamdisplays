@@ -102,6 +102,12 @@ internal class VideoFramePipe(private val debugLabel: String) {
     }
 
     /**
+     * Releases the PBO ring. Must be called from the render thread when this pipe is permanently
+     * discarded (i.e., the owning [MediaPlayer] is being stopped for good).
+     */
+    fun cleanup() = uploader.cleanup()
+
+    /**
      * Starts the video reader thread and returns it (already running).
      *
      * @param seekOffsetNanos initial playback position (must match the FFmpeg `-ss` offset)
@@ -114,14 +120,14 @@ internal class VideoFramePipe(private val debugLabel: String) {
      */
     fun start(proc: Process, w: Int, h: Int, seekOffsetNanos: Long, sourceFps: Double, stopFlag: AtomicBoolean,
         terminated: AtomicBoolean, getAudioClock: () -> Long, onFirstFrame: () -> Unit, getBrightness: () -> Double,
-        onEos: (stderr: String, normalEos: Boolean) -> Unit, fitTexture: Runnable,
+        onEos: (stderr: String, normalEos: Boolean) -> Unit,
     ): Thread {
         expectedW = w
         expectedH = h
         lastFrameReceivedNanos.set(System.nanoTime())
         val frameNs = (1_000_000_000.0 / (sourceFps.takeIf { it > 1.0 } ?: DEFAULT_FPS)).toLong()
         return daemon(
-            { read(proc, w, h, frameNs, seekOffsetNanos, stopFlag, terminated, getAudioClock, onFirstFrame, getBrightness, onEos, fitTexture) },
+            { read(proc, w, h, frameNs, seekOffsetNanos, stopFlag, terminated, getAudioClock, onFirstFrame, getBrightness, onEos) },
             "MediaPlayer-video",
         ).also { it.start() }
     }
@@ -131,7 +137,7 @@ internal class VideoFramePipe(private val debugLabel: String) {
      */
     private fun read(proc: Process, w: Int, h: Int, frameNs: Long, seekOffsetNanos: Long, stopFlag: AtomicBoolean,
         terminated: AtomicBoolean, getAudioClock: () -> Long, onFirstFrame: () -> Unit, getBrightness: () -> Double,
-        onEos: (stderr: String, normalEos: Boolean) -> Unit, fitTexture: Runnable,
+        onEos: (stderr: String, normalEos: Boolean) -> Unit,
     ) {
         val frameSize = w * h * 3
         val bufA = ByteBuffer.allocateDirect(frameSize).order(ByteOrder.nativeOrder())
@@ -156,7 +162,6 @@ internal class VideoFramePipe(private val debugLabel: String) {
         }, "MediaPlayer-vstderr").also { it.start() }
 
         var normalEos = false
-        val mc = Minecraft.getInstance()
 
         try {
             proc.inputStream.use { input ->
@@ -213,7 +218,6 @@ internal class VideoFramePipe(private val debugLabel: String) {
                     }
                     frameAvailable.set(true)
                     if (MediaPlayer.DEBUG) MediaPlayer.samplesIn.incrementAndGet()
-                    mc.execute(fitTexture)
 
                     videoPts += frameNs
                 }

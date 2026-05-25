@@ -10,10 +10,4 @@ internal data class PlayerEvents(
 
     /** Called after a seek completes so the screen can reset its overlay state. */
     val onSeek: () -> Unit,
-
-    /**
-     * Posted to the `Minecraft` render queue after each frame swap.
-     * Called from the video reader thread, not the control executor.
-     */
-    val onFitTexture: Runnable,
 )

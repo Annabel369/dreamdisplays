@@ -32,6 +32,10 @@ object ScreenRenderer {
     }
 
     private fun renderScreenTexture(displayScreen: DisplayScreen, stack: PoseStack, tessellator: Tesselator) {
+        // Upload the latest decoded frame to the GPU texture (if a new one is ready).
+        // Done here on the render thread instead of via mc.execute() per frame.
+        displayScreen.fitTexture()
+
         stack.pushPose()
         moveForward(stack, displayScreen.facing, 0.008f)
 

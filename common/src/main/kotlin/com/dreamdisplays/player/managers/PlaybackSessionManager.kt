@@ -12,6 +12,7 @@ import com.dreamdisplays.player.stream.StreamSet
 import com.dreamdisplays.player.util.joinSafely
 import com.mojang.blaze3d.textures.GpuTexture
 import me.inotsleep.utils.logging.LoggingManager
+import net.minecraft.client.Minecraft
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
@@ -105,7 +106,6 @@ internal class PlaybackSessionManager(
                 onFirstFrame = { clock.markFirstFrame() },
                 getBrightness = getBrightness,
                 onEos = onStreamEnd,
-                fitTexture = events.onFitTexture,
             )
             val at = audio.start(ap, terminated, aStop)
             session = Session(vp, ap, vt, at, vStop, aStop)
@@ -130,6 +130,15 @@ internal class PlaybackSessionManager(
             joinSafely(s.videoThread); joinSafely(s.audioThread)
         }
         session = null
+    }
+
+    /**
+     * Releases the PBO ring held by [video]. Must be called once when this session manager is
+     * permanently discarded (i.e., when the owning [MediaPlayer] is stopping for good).
+     * Schedules the GL cleanup on the render thread.
+     */
+    fun cleanup() {
+        Minecraft.getInstance().execute { video.cleanup() }
     }
 
     @Volatile private var session: Session? = null
