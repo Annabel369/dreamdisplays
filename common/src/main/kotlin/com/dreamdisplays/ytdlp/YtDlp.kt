@@ -228,6 +228,7 @@ object YtDlp {
             args.add(proxy)
         }
         val cookieFile = BUNDLED_DIR.resolve("cookies.txt")
+        if (!Files.exists(cookieFile) && !cookiesUnavailableThisSession) ensureCookieFileMaterialized(cookieFile)
         if (Files.exists(cookieFile)) {
             val tempCookies = try {
                 val target = Files.createTempFile(BUNDLED_DIR, "cookies-", ".txt")
@@ -248,11 +249,58 @@ object YtDlp {
             }
             return tempCookies
         }
-        resolveCookieBrowser()?.let {
-            args.add("--cookies-from-browser")
-            args.add(it)
+        if (!cookiesUnavailableThisSession) {
+            resolveCookieBrowser()?.let {
+                args.add("--cookies-from-browser")
+                args.add(it)
+            }
         }
         return null
+    }
+
+    /**
+     * Cross-process lock for serializing `--cookies-from-browser` access across multiple game
+     * installs on the same machine. Located in the system temp dir so all installs see the same
+     * lock file.
+     */
+    private val COOKIE_EXPORT_LOCK_FILE: Path =
+        Path.of(System.getProperty("java.io.tmpdir"), "dreamdisplays-yt-cookies.lock")
+
+    /**
+     * Set to true after a cookie export failure (timeout, hang, permission denied, etc.) to stop
+     * banging on `--cookies-from-browser` for the rest of the session. The user can still play
+     * public videos without cookies; the alternative is every yt-dlp call hanging for 60 s.
+     */
+    @Volatile private var cookiesUnavailableThisSession = false
+
+    /**
+     * Synchronously exports cookies to [cookieFile] under a cross-process file lock. No-op if
+     * another process already created the file while we were waiting. Returns silently on any
+     * failure, the caller falls back to `--cookies-from-browser` directly in that case.
+     */
+    private fun ensureCookieFileMaterialized(cookieFile: Path) {
+        if (resolveCookieBrowser() == null) return
+        try {
+            Files.createDirectories(COOKIE_EXPORT_LOCK_FILE.parent)
+            RandomAccessFile(COOKIE_EXPORT_LOCK_FILE.toFile(), "rw").use { raf ->
+                raf.channel.lock().use {
+                    if (Files.exists(cookieFile)) return
+                    try {
+                        exportCookieHeader()
+                    } catch (e: Exception) {
+                        LoggingManager.warn("[yt-dlp] Synchronous cookie export failed: ${e.message}")
+                    }
+                    if (!Files.exists(cookieFile)) {
+                        cookiesUnavailableThisSession = true
+                        LoggingManager.warn(
+                            "[yt-dlp] Cookie export produced no file. Disabling browser cookie lookups for this session. Public videos will still work."
+                        )
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            LoggingManager.warn("[yt-dlp] Could not acquire cookie export lock: ${e.message}")
+        }
     }
 
     private val cookieRefreshInProgress = AtomicBoolean(false)
@@ -443,16 +491,21 @@ object YtDlp {
             p.outputStream.close()
         } catch (_: IOException) {
         }
-        p.inputStream.use { it.readAllBytes() }
+        val drainer = Thread {
+            try { p.inputStream.use { it.readAllBytes() } } catch (_: Exception) {}
+        }.apply { isDaemon = true; start() }
         try {
-            if (!p.waitFor(20, TimeUnit.SECONDS)) {
+            if (!p.waitFor(15, TimeUnit.SECONDS)) {
                 p.destroyForcibly()
+                cookiesUnavailableThisSession = true
                 throw IOException("[yt-dlp] Cookie export timed out")
             }
         } catch (e: InterruptedException) {
+            p.destroyForcibly()
             Thread.currentThread().interrupt()
             throw IOException("[yt-dlp] Interrupted", e)
         }
+        try { drainer.join(500) } catch (_: InterruptedException) {}
 
         if (!Files.exists(cookieFile)) return null
         val lines = Files.readAllLines(cookieFile, StandardCharsets.UTF_8)
