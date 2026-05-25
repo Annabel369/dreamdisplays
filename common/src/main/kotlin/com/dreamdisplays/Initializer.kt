@@ -122,6 +122,7 @@ object Initializer {
         val savedData = DisplaySettings.getDisplayData(uuid)
         displayScreen.renderDistance = savedData?.renderDistance ?: config.defaultDistance
 
+        displayScreen.createTexture()
         DisplayManager.registerScreen(displayScreen)
         if (code != "") displayScreen.loadVideo(code, lang)
     }
@@ -142,6 +143,7 @@ object Initializer {
         displayScreen.brightness = data.brightness
         displayScreen.muted = data.muted
 
+        displayScreen.createTexture()
         DisplayManager.screens[displayScreen.uuid] = displayScreen
 
         if (data.videoUrl.isNotEmpty()) {

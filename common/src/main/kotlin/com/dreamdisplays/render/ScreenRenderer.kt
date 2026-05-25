@@ -15,7 +15,7 @@ object ScreenRenderer {
     fun render(stack: PoseStack, camera: Camera) {
         val cameraPos = camera.position()
         for (displayScreen in DisplayManager.getScreens()) {
-            if (displayScreen.texture == null) displayScreen.createTexture()
+            if (displayScreen.texture == null) continue
 
             stack.pushPose()
 
