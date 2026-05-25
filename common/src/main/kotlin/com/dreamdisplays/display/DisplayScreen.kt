@@ -42,9 +42,10 @@ class DisplayScreen(
     private val savedSettings = DisplaySettings.getSettings(uuid)
 
     var owner: Boolean = Minecraft.getInstance().player?.gameProfile?.id?.toString() == ownerUuid.toString()
+    val isAdmin: Boolean get() = Initializer.isAdmin
     var isLocked: Boolean? = null
     var errored: Boolean = false
-    val canEdit: Boolean get() = owner || isLocked != true
+    val canEdit: Boolean get() = owner || isAdmin || isLocked != true
     var muted: Boolean = savedSettings.muted
     var texture: DynamicTexture? = null
     var textureId: Identifier? = null

@@ -46,6 +46,7 @@ object ServerPacketHandler {
                 val config = Server.config
                 // Fabric server start
                 PacketUtil.sendPremium(player, isOpLevel2(player))
+                PacketUtil.sendIsAdmin(player, isOpLevel2(player))
                 PacketUtil.sendReportEnabled(player, config.settings.webhookUrl.isNotEmpty())
 
                 val playerWorldKey = player.level().dimension().identifier().toString()

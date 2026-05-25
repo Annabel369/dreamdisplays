@@ -66,6 +66,10 @@ object PacketUtil {
         runCatching { ServerPlayNetworking.send(player, Packets.Premium(isPremium)) }
     }
 
+    fun sendIsAdmin(player: ServerPlayer, isAdmin: Boolean) {
+        runCatching { ServerPlayNetworking.send(player, Packets.IsAdmin(isAdmin)) }
+    }
+
     fun sendDisplayEnabled(player: ServerPlayer, isEnabled: Boolean) {
         runCatching { ServerPlayNetworking.send(player, Packets.DisplayEnabled(isEnabled)) }
     }

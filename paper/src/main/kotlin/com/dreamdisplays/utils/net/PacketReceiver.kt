@@ -24,6 +24,7 @@ import com.dreamdisplays.utils.MessageUtil.sendColoredMessage
 import com.dreamdisplays.utils.MessageUtil.sendMessage
 import com.dreamdisplays.utils.YouTubeUtil.sanitize
 import com.dreamdisplays.utils.net.PacketUtil.sendDisplayInfo
+import com.dreamdisplays.utils.net.PacketUtil.sendIsAdmin
 import com.dreamdisplays.utils.net.PacketUtil.sendPremium
 import com.dreamdisplays.utils.net.PacketUtil.sendReportEnabled
 import com.github.zafarkhaja.semver.Version
@@ -137,6 +138,12 @@ class PacketReceiver(private val plugin: Main) : PluginMessageListener {
         sendPremium(
             player,
             player.hasPermission(config.permissions.premium)
+        )
+
+        // Send admin status
+        sendIsAdmin(
+            player,
+            player.hasPermission(config.permissions.delete)
         )
 
         // Send display enabled status

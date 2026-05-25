@@ -28,6 +28,7 @@ object PacketUtil {
     private const val CHANNEL_SYNC = "dreamdisplays:sync"
     private const val CHANNEL_DELETE = "dreamdisplays:delete"
     private const val CHANNEL_PREMIUM = "dreamdisplays:premium"
+    private const val CHANNEL_IS_ADMIN = "dreamdisplays:is_admin"
     private const val CHANNEL_DISPLAY_ENABLED = "dreamdisplays:display_enabled"
     private const val CHANNEL_REPORT_ENABLED = "dreamdisplays:report_enabled"
     private const val CHANNEL_CLEAR_CACHE = "dreamdisplays:clear_cache"
@@ -101,6 +102,10 @@ object PacketUtil {
 
     fun sendPremium(player: Player, isPremium: Boolean) {
         sendBooleanPacket(player, CHANNEL_PREMIUM, isPremium)
+    }
+
+    fun sendIsAdmin(player: Player, isAdmin: Boolean) {
+        sendBooleanPacket(player, CHANNEL_IS_ADMIN, isAdmin)
     }
 
     fun sendDisplayEnabled(player: Player, isEnabled: Boolean) {

@@ -23,6 +23,7 @@ object ChannelRegistrar {
 
     private val outgoingChannels = listOf(
         "dreamdisplays:premium",
+        "dreamdisplays:is_admin",
         "dreamdisplays:display_info",
         "dreamdisplays:sync",
         "dreamdisplays:delete",

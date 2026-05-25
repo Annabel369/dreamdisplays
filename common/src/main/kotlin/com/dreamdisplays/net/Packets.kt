@@ -98,6 +98,18 @@ object Packets {
         }
     }
 
+    data class IsAdmin(val isAdmin: Boolean) : CustomPacketPayload {
+        override fun type(): CustomPacketPayload.Type<out CustomPacketPayload> = PACKET_ID
+
+        companion object {
+            val PACKET_ID: CustomPacketPayload.Type<IsAdmin> = createType("is_admin")
+            val PACKET_CODEC: StreamCodec<RegistryFriendlyByteBuf, IsAdmin> = StreamCodec.of(
+                { buf, packet -> buf.writeBoolean(packet.isAdmin) },
+                { buf -> IsAdmin(buf.readBoolean()) }
+            )
+        }
+    }
+
     data class Premium(val premium: Boolean) : CustomPacketPayload {
         override fun type(): CustomPacketPayload.Type<out CustomPacketPayload> = PACKET_ID
 

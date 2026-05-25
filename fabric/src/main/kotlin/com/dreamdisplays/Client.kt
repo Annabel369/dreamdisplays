@@ -29,6 +29,9 @@ class Client : ClientModInitializer, Mod {
         ClientPlayNetworking.registerGlobalReceiver(Packets.Premium.PACKET_ID) { payload, _ ->
             Initializer.onPremiumPacket(payload)
         }
+        ClientPlayNetworking.registerGlobalReceiver(Packets.IsAdmin.PACKET_ID) { payload, _ ->
+            Initializer.onIsAdminPacket(payload)
+        }
         ClientPlayNetworking.registerGlobalReceiver(Packets.Delete.PACKET_ID) { payload, _ ->
             Initializer.onDeletePacket(payload)
         }
@@ -74,6 +77,8 @@ class Client : ClientModInitializer, Mod {
         ClientPlayConnectionEvents.DISCONNECT.register { _, _ ->
             DisplayManager.saveAllScreens()
             DisplayManager.unloadAll()
+            Initializer.isPremium = false
+            Initializer.isAdmin = false
         }
 
         ClientLifecycleEvents.CLIENT_STOPPING.register { Initializer.onStop() }

@@ -75,6 +75,7 @@ class Server : ModInitializer {
             runCatching { register(Packets.Info.PACKET_ID, Packets.Info.PACKET_CODEC) }
             runCatching { register(Packets.Sync.PACKET_ID, Packets.Sync.PACKET_CODEC) }
             runCatching { register(Packets.Premium.PACKET_ID, Packets.Premium.PACKET_CODEC) }
+            runCatching { register(Packets.IsAdmin.PACKET_ID, Packets.IsAdmin.PACKET_CODEC) }
             runCatching { register(Packets.Delete.PACKET_ID, Packets.Delete.PACKET_CODEC) }
             runCatching { register(Packets.DisplayEnabled.PACKET_ID, Packets.DisplayEnabled.PACKET_CODEC) }
             runCatching { register(Packets.ReportEnabled.PACKET_ID, Packets.ReportEnabled.PACKET_CODEC) }

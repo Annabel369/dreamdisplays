@@ -263,7 +263,7 @@ class DisplayMenu private constructor() : Screen(Component.translatable("dreamdi
                 setIconTextureId(Identifier.fromNamespaceAndPath(Initializer.MOD_ID, if (newLocked) "lock" else "unlock"))
             }
         }
-        lockButtonWidget!!.active = ds.owner
+        lockButtonWidget!!.active = ds.owner || ds.isAdmin
         lockButtonWidget!!.visible = ds.isLocked != null
 
         deleteButtonWidget = object : ButtonWidget(
@@ -278,7 +278,7 @@ class DisplayMenu private constructor() : Screen(Component.translatable("dreamdi
             }
         }
         deleteButtonWidget!!.setSprites(red)
-        deleteButtonWidget!!.active = ds.owner
+        deleteButtonWidget!!.active = ds.owner || ds.isAdmin
 
         reportButtonWidget = if (Initializer.isReportingEnabled) {
             object : ButtonWidget(
@@ -370,12 +370,12 @@ class DisplayMenu private constructor() : Screen(Component.translatable("dreamdi
         quality?.active = videoReady
         brightness?.active = videoReady && (!ds.isSync || ds.canEdit)
         sync?.active = videoReady && ds.canEdit
-        deleteButtonWidget?.active = ds.owner
+        deleteButtonWidget?.active = ds.owner || ds.isAdmin
         lockButtonWidget?.let {
             val locked = ds.isLocked
             it.visible = locked != null
             if (locked != null) {
-                it.active = ds.owner
+                it.active = ds.owner || ds.isAdmin
                 it.setIconTextureId(Identifier.fromNamespaceAndPath(Initializer.MOD_ID, if (locked) "lock" else "unlock"))
             }
         }

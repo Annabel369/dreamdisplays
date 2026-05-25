@@ -55,6 +55,7 @@ object Initializer {
     var focusMode: Boolean = false
     var displaysEnabled: Boolean = true
     var isPremium: Boolean = false
+    var isAdmin: Boolean = false
     var isReportingEnabled: Boolean = true
 
     private var unloadCheckTick: Int = 0
@@ -290,6 +291,10 @@ object Initializer {
 
     fun onPremiumPacket(packet: Packets.Premium) {
         isPremium = packet.premium
+    }
+
+    fun onIsAdminPacket(packet: Packets.IsAdmin) {
+        isAdmin = packet.isAdmin
     }
 
     fun onReportEnabledPacket(packet: Packets.ReportEnabled) {
