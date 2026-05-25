@@ -2,6 +2,7 @@ package com.dreamdisplays.server.commands.subcommands
 
 import com.dreamdisplays.Server
 import com.dreamdisplays.server.managers.DisplayManager
+import com.dreamdisplays.server.managers.StateManager
 import com.dreamdisplays.server.utils.net.PacketUtil
 import com.dreamdisplays.server.utils.net.ServerPacketHandler
 import com.dreamdisplays.server.utils.MessageUtil
@@ -60,12 +61,13 @@ object ServerVideoCommand {
             return 0
         }
 
+        val wasSync = data.isSync
         data.url = "https://youtube.com/watch?v=$code"
         data.lang = normalizeLangCode(langRaw)
-        data.isSync = false
 
         val receivers = DisplayManager.getReceivers(data, ctx.source.server)
         PacketUtil.sendDisplayInfo(receivers, data)
+        if (wasSync) StateManager.resetAndBroadcast(data.id, receivers)
 
         MessageUtil.sendMessage(player, "settedURL")
         return 1

@@ -178,12 +178,13 @@ object ServerPacketHandler {
                 if (displayData.ownerId != player.uuid && !isOpLevel2(player)) return@registerGlobalReceiver
                 // Fabric server end
 
+                val wasSync = displayData.isSync
                 displayData.url = payload.url
                 displayData.lang = payload.lang
-                displayData.isSync = false
 
                 val receivers = DisplayManager.getReceivers(displayData, context.server())
                 PacketUtil.sendDisplayInfo(receivers, displayData)
+                if (wasSync) StateManager.resetAndBroadcast(displayId, receivers)
             }.onFailure { e ->
                 logger.warn("[PacketReceiver] Failed to handle set_video packet", e)
             }

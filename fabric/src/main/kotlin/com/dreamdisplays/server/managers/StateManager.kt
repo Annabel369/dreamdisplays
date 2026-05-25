@@ -69,4 +69,36 @@ object StateManager {
         PacketUtil.sendSync(listOf(player), packet)
         // Paper end
     }
+
+    // Fabric server start
+    /** Resets the server-side clock for [displayId] to 0 (called when owner switches video). */
+    fun resetAndBroadcast(displayId: UUID, receivers: List<ServerPlayer>) {
+        val display = DisplayManager.getDisplayData(displayId) ?: return
+        val state = playStates.computeIfAbsent(displayId) { id -> StateData(id) }
+        state.update(SyncData(displayId, true, false, 0L, 0L))
+        display.duration = 0L
+        lastSyncBroadcast[displayId] = System.currentTimeMillis()
+        PacketUtil.sendSync(receivers, state.createPacket(display))
+    }
+
+    /**
+     * Periodically broadcasts the current sync packet for every active sync display to keep
+     * clients in lockstep. Without this, clients drift after the initial sync.
+     */
+    fun tickBroadcast(server: MinecraftServer) {
+        if (playStates.isEmpty()) return
+        val now = System.currentTimeMillis()
+        for ((displayId, state) in playStates) {
+            val last = lastSyncBroadcast[displayId] ?: 0L
+            if (now - last < PERIODIC_BROADCAST_INTERVAL_MS) continue
+            val display = DisplayManager.getDisplayData(displayId) ?: continue
+            if (!display.isSync) continue
+            lastSyncBroadcast[displayId] = now
+            val receivers = DisplayManager.getReceivers(display, server)
+            if (receivers.isNotEmpty()) PacketUtil.sendSync(receivers, state.createPacket(display))
+        }
+    }
+
+    private const val PERIODIC_BROADCAST_INTERVAL_MS = 2000L
+    // Fabric server end
 }

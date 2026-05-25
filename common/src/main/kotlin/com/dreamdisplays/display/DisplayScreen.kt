@@ -72,6 +72,12 @@ class DisplayScreen(
     private var paused: Boolean = savedSettings.paused
     var renderDistance: Int = 64
     var savedTimeNanos: Long = 0
+    @Volatile private var serverSyncReceivedAt: Long = 0L
+    // Tracking for sync-seek throttling: only seek when the server's reported time JUMPS (owner
+    // did a real seek), not when it merely advances at wall-clock speed (owner just playing,
+    // local client is slightly behind due to FFmpeg buffering — seeking won't fix that).
+    @Volatile private var lastSyncTargetNs: Long = -1L
+    @Volatile private var lastSyncRecvWallNs: Long = 0L
     private var mediaPlayer: MediaPlayer? = null
     var videoUrl: String? = null
         private set
@@ -133,6 +139,8 @@ class DisplayScreen(
         mediaPlayer = null
         videoStarted = false
         errored = false
+        lastSyncTargetNs = -1L
+        serverSyncReceivedAt = 0L
         oldPlayer?.stop()
 
         this.videoUrl = videoUrl
@@ -199,6 +207,7 @@ class DisplayScreen(
     fun updateData(packet: Packets.Sync) {
         isSync = packet.isSync
         if (!isSync) return
+        serverSyncReceivedAt = System.nanoTime()
 
         val nanos = System.nanoTime()
         val desiredPaused = packet.currentState
@@ -217,7 +226,22 @@ class DisplayScreen(
             if (desiredPaused && !paused) setPaused(true)
             val mp = mediaPlayer
             val clockRunning = mp?.isClockRunning() == true
-            if (canSeek && clockRunning && drift > SYNC_SEEK_TOLERANCE_NS) seekVideoTo(targetTime)
+            // Decide whether targetTime is a genuine jump (owner seeked) vs natural progression
+            // (owner is just playing and we're slightly behind). If the new target lines up with
+            // the previous one extrapolated by wall-clock elapsed, it's the latter — do NOT seek,
+            // because seeking won't make us catch up (FFmpeg pipeline lag re-creates the drift
+            // immediately and we'd loop into permanent restarts).
+            val recvWallNs = System.nanoTime()
+            val ownerSeeked = if (lastSyncTargetNs < 0) {
+                true // first sync packet ever for this video — adopt server time
+            } else {
+                val elapsed = recvWallNs - lastSyncRecvWallNs
+                abs(targetTime - (lastSyncTargetNs + elapsed)) > SYNC_JUMP_THRESHOLD_NS
+            }
+            lastSyncTargetNs = targetTime
+            lastSyncRecvWallNs = recvWallNs
+            if (ownerSeeked && canSeek && clockRunning && drift > SYNC_SEEK_TOLERANCE_NS)
+                seekVideoTo(targetTime)
             if (!desiredPaused && paused) setPaused(false)
         }
     }
@@ -326,6 +350,26 @@ class DisplayScreen(
             paused = false
         }
         restoreSavedTime()
+        bootstrapServerSyncIfNeeded()
+    }
+
+    /**
+     * For sync displays, the server's clock only exists once *someone* (the owner) has sent a
+     * Sync packet. If a fresh server / no-one's-been-owner-yet situation leaves playStates empty,
+     * RequestSync returns nothing and clients sit at 0 forever. So the owner sends a Sync ~1.5s
+     * after startVideo — but only if no server Sync arrived in that window (otherwise we'd
+     * overwrite the server's ticking clock with our local time=0 on every reconnect).
+     */
+    private fun bootstrapServerSyncIfNeeded() {
+        if (!owner || !isSync) return
+        val gen = mediaPlayerGeneration.get()
+        com.dreamdisplays.player.util.daemon({
+            try { Thread.sleep(1500) } catch (_: InterruptedException) { return@daemon }
+            if (gen != mediaPlayerGeneration.get()) return@daemon
+            if (serverSyncReceivedAt > 0L) return@daemon
+            if (!owner || !isSync) return@daemon
+            sendSync()
+        }, "MediaPlayer-bootstrap-sync").start()
     }
 
     val isPaused: Boolean get() = paused
@@ -358,7 +402,9 @@ class DisplayScreen(
 
     fun seekToMillis(ms: Long) {
         val mp = mediaPlayer ?: return
-        if (mp.canSeek()) mp.seekTo(ms * 1_000_000L, false)
+        // fire=true so events.onSeek -> afterSeek -> sendSync propagates the seek to other
+        // clients via the server. (seekVideoTo is the inbound-sync path and passes false.)
+        if (mp.canSeek()) mp.seekTo(ms * 1_000_000L, true)
     }
 
     fun unregister() {
@@ -457,6 +503,7 @@ class DisplayScreen(
     companion object {
         private const val DEFAULT_QUALITY = 720
         private const val SYNC_SEEK_TOLERANCE_NS = 750_000_000L
+        private const val SYNC_JUMP_THRESHOLD_NS = 1_500_000_000L
 
         private fun createRenderType(id: Identifier): RenderType = RenderType.create(
             "dream-displays",

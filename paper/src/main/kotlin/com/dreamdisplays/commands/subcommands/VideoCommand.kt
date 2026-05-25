@@ -4,6 +4,7 @@ import com.dreamdisplays.Main
 import com.dreamdisplays.managers.DisplayManager.getReceivers
 import com.dreamdisplays.managers.DisplayManager.isContains
 import com.dreamdisplays.managers.DisplayManager.sendUpdate
+import com.dreamdisplays.managers.StateManager
 import com.dreamdisplays.utils.MessageUtil
 import com.dreamdisplays.utils.YouTubeUtil
 import org.bukkit.command.CommandSender
@@ -44,13 +45,15 @@ class VideoCommand : SubCommand {
             return
         }
 
+        val wasSync = data.isSync
         data.apply {
             url = "https://youtube.com/watch?v=$code"
             lang = normalizeLangCode(args.getOrNull(2).orEmpty())
-            isSync = false
         }
 
-        sendUpdate(data, getReceivers(data))
+        val receivers = getReceivers(data)
+        sendUpdate(data, receivers)
+        if (wasSync) StateManager.resetAndBroadcast(data.id, receivers)
 
         MessageUtil.sendMessage(player, "settedURL")
     }

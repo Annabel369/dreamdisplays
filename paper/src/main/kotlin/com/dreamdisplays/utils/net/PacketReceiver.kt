@@ -16,6 +16,7 @@ import com.dreamdisplays.managers.PlayerManager.setDisplaysEnabled
 import com.dreamdisplays.managers.PlayerManager.setModUpdateNotified
 import com.dreamdisplays.managers.PlayerManager.setPluginUpdateNotified
 import com.dreamdisplays.managers.PlayerManager.setVersion
+import com.dreamdisplays.managers.StateManager
 import com.dreamdisplays.managers.StateManager.processSyncPacket
 import com.dreamdisplays.managers.StateManager.sendSyncPacket
 import com.dreamdisplays.meta.Scheduler
@@ -268,11 +269,13 @@ class PacketReceiver(private val plugin: Main) : PluginMessageListener {
                     !player.hasPermission(config.permissions.delete)
                 ) return@runCatching
 
+                val wasSync = displayData.isSync
                 displayData.url = url
                 displayData.lang = lang
-                displayData.isSync = false
 
-                sendUpdate(displayData, getReceivers(displayData))
+                val receivers = getReceivers(displayData)
+                sendUpdate(displayData, receivers)
+                if (wasSync) StateManager.resetAndBroadcast(displayId, receivers)
             }
         }.onFailure { error ->
             warn("[PacketReceiver] Failed to decode set_video packet", error)

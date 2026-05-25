@@ -72,4 +72,36 @@ object StateManager {
         val packet = state.createPacket()
         PacketUtil.sendSync(mutableListOf(player), packet)
     }
+
+    /** Resets the server-side clock for [displayId] to 0 (called when owner switches video). */
+    @JvmStatic
+    fun resetAndBroadcast(displayId: UUID, receivers: List<Player>) {
+        val display = getDisplayData(displayId) ?: return
+        val state = playStates.computeIfAbsent(displayId) { id -> StateData(id) }
+        state.update(SyncData(displayId, true, false, 0L, 0L))
+        display.duration = 0L
+        lastSyncBroadcast[displayId] = System.currentTimeMillis()
+        PacketUtil.sendSync(receivers.toMutableList(), state.createPacket())
+    }
+
+    /**
+     * Periodically broadcasts the current sync packet for every active sync display to keep
+     * clients in lockstep. Without this, clients drift after the initial sync.
+     */
+    @JvmStatic
+    fun tickBroadcast() {
+        if (playStates.isEmpty()) return
+        val now = System.currentTimeMillis()
+        for ((displayId, state) in playStates) {
+            val last = lastSyncBroadcast[displayId] ?: 0L
+            if (now - last < PERIODIC_BROADCAST_INTERVAL_MS) continue
+            val display = getDisplayData(displayId) ?: continue
+            if (!display.isSync) continue
+            lastSyncBroadcast[displayId] = now
+            val receivers = getReceivers(display)
+            if (receivers.isNotEmpty()) PacketUtil.sendSync(receivers.toMutableList(), state.createPacket())
+        }
+    }
+
+    private const val PERIODIC_BROADCAST_INTERVAL_MS = 2000L
 }

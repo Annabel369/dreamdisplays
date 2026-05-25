@@ -2,6 +2,7 @@ package com.dreamdisplays.registrar
 
 import com.dreamdisplays.Main
 import com.dreamdisplays.managers.DisplayManager
+import com.dreamdisplays.managers.StateManager
 import com.dreamdisplays.meta.Updater.checkForUpdates
 import com.dreamdisplays.scheduler.ProviderScheduler
 
@@ -23,6 +24,7 @@ object SchedulerRegistrar {
             DISPLAY_UPDATE_INTERVAL_TICKS
         ) {
             DisplayManager.updateAllDisplays()
+            StateManager.tickBroadcast()
         }
 
         // Check for updates every hour

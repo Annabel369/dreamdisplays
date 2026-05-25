@@ -6,6 +6,7 @@ import com.dreamdisplays.server.listeners.PlayerListener
 import com.dreamdisplays.server.listeners.ProtectionListener
 import com.dreamdisplays.server.listeners.SelectionListener
 import com.dreamdisplays.server.managers.DisplayManager
+import com.dreamdisplays.server.managers.StateManager
 import com.dreamdisplays.server.managers.StorageManager
 import com.dreamdisplays.server.meta.Updater
 import com.dreamdisplays.server.utils.net.ServerPacketHandler
@@ -101,6 +102,7 @@ class Server : ModInitializer {
                 runCatching {
                     server.execute {
                         DisplayManager.updateAllDisplays(server)
+                        StateManager.tickBroadcast(server)
                     }
                 }
             }
