@@ -13,6 +13,10 @@ import org.bukkit.entity.Player
 object DisplayValidator {
     private const val VALID_DISPLAY = 6
 
+    /**
+     * Validates a player's selection. Returns [VALID_DISPLAY] if the selection forms a legal
+     * display, or a non-zero error code consumed by [sendErrorMessage].
+     */
     fun isValidDisplay(data: SelectionData): Int {
         val pos1 = data.pos1 ?: return 0
         val pos2 = data.pos2 ?: return 0
@@ -42,6 +46,7 @@ object DisplayValidator {
         return VALID_DISPLAY
     }
 
+    /** Sends the localized validation-error message corresponding to [code]. */
     fun sendErrorMessage(player: Player, code: Int) {
         val key = when (code) {
             0 -> "secondPointNotSelected"

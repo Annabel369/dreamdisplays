@@ -26,22 +26,24 @@ import java.util.function.Consumer
  *
  * `Paper` implementation.
  */
-@NullMarked
-object DisplayManager {
+@NullMarked object DisplayManager {
     private val displays: MutableMap<UUID, DisplayData> = ConcurrentHashMap()
     private val reportTime: MutableMap<UUID, Long> = ConcurrentHashMap()
 
-    @JvmStatic
-    fun getDisplayData(id: UUID?): DisplayData? = displays[id]
+    /** Returns the [DisplayData] registered under [id], or null if none exists. */
+    @JvmStatic fun getDisplayData(id: UUID?): DisplayData? = displays[id]
 
+    /** Returns a snapshot list of all currently registered displays. */
     fun getDisplays(): List<DisplayData> = displays.values.toList()
 
+    /** Returns the first display whose bounding box contains [location], or null. */
     fun isContains(location: Location): DisplayData? {
         return displays.values.firstOrNull { display ->
             display.pos1.world == location.world && display.box.contains(location.toVector())
         }
     }
 
+    /** Returns true if the selection box defined by [data] intersects any existing display. */
     fun isOverlaps(data: SelectionData): Boolean {
         val pos1 = data.pos1 ?: return false
         val pos2 = data.pos2 ?: return false
@@ -62,17 +64,20 @@ object DisplayManager {
         }
     }
 
+    /** Registers a new display and broadcasts an update to nearby players. */
     fun register(data: DisplayData) {
         displays[data.id] = data
         sendUpdate(data, getReceivers(data))
     }
 
+    /** Bulk-registers displays loaded from storage without sending any updates. */
     fun register(list: List<DisplayData>) {
         list.forEach { display ->
             displays[display.id] = display
         }
     }
 
+    /** Sends a refresh packet for every display to in-range players in their respective worlds. */
     fun updateAllDisplays() {
         val playersByWorld = displays.values
             .mapNotNull { it.pos1.world }
@@ -91,11 +96,13 @@ object DisplayManager {
         }
     }
 
+    /** Returns the players currently in range of [display] in its world. */
     fun getReceivers(display: DisplayData): List<Player> =
         display.pos1.world?.players
             ?.filter { it.location.isInRange(display) }
             ?: emptyList()
 
+    /** Returns true if this location lies within `maxRenderDistance` of the [display]'s box. */
     private fun Location.isInRange(display: DisplayData): Boolean {
         val maxRender = config.settings.maxRenderDistance
         val clampedX = blockX.coerceIn(display.box.minX.toInt(), display.box.maxX.toInt())
@@ -107,6 +114,7 @@ object DisplayManager {
         return dx * dx + dy * dy + dz * dz <= maxRender * maxRender
     }
 
+    /** Sends a `DisplayInfo` packet describing [display] to the given [players]. */
     fun sendUpdate(display: DisplayData, players: List<Player>) {
         @Suppress("UNCHECKED_CAST")
         PacketUtil.sendDisplayInfo(
@@ -124,6 +132,7 @@ object DisplayManager {
         )
     }
 
+    /** Removes [displayData] from storage and the registry and notifies nearby clients. */
     fun delete(displayData: DisplayData) {
         runAsync {
             getInstance().storage.deleteDisplay(displayData)
@@ -134,15 +143,18 @@ object DisplayManager {
         displays.remove(displayData.id)
     }
 
-    @JvmStatic
-    fun delete(id: UUID) {
+    /** Deletes the display referenced by [id], if it exists. */
+    @JvmStatic fun delete(id: UUID) {
         val displayData = displays[id] ?: return
 
         delete(displayData)
     }
 
-    @JvmStatic
-    fun report(id: UUID, player: Player) {
+    /**
+     * Posts a report about display [id] to the configured webhook, respecting per-display cooldown
+     * and informing [player] about the outcome.
+     */
+    @JvmStatic fun report(id: UUID, player: Player) {
         val displayData = displays[id] ?: return
         val lastReport = reportTime.getOrPut(id) { 0L }
 
@@ -172,10 +184,15 @@ object DisplayManager {
         }
     }
 
+    /** Invokes [saveDisplay] for every currently registered display (used by storage flush). */
     fun save(saveDisplay: Consumer<DisplayData>) {
         displays.values.forEach(saveDisplay)
     }
 
+    /**
+     * Scans every display's bounding box for the configured base material; displays with none
+     * are removed from disk and memory. Returns the UUIDs of removed displays.
+     */
     fun validateDisplaysAndCleanup(): List<UUID> {
         val baseMaterial = config.settings.baseMaterial
         val invalidDisplays = mutableListOf<DisplayData>()

@@ -10,19 +10,19 @@ import java.util.*
  *
  * `Paper` implementation.
  */
-@NullMarked
-object PlayerManager {
+@NullMarked object PlayerManager {
     private val versions: MutableMap<UUID, Version?> = java.util.concurrent.ConcurrentHashMap()
     private val modUpdateNotified: MutableMap<UUID, Boolean> = java.util.concurrent.ConcurrentHashMap()
     private val pluginUpdateNotified: MutableMap<UUID, Boolean> = java.util.concurrent.ConcurrentHashMap()
     private val modRequiredNotified: MutableMap<UUID, Boolean> = java.util.concurrent.ConcurrentHashMap()
     private val displaysEnabled: MutableMap<UUID, Boolean> = java.util.concurrent.ConcurrentHashMap()
 
-    @JvmStatic
-    fun setVersion(player: Player, version: Version?) {
+    /** Records the mod [version] reported by [player] for compatibility checks. */
+    @JvmStatic fun setVersion(player: Player, version: Version?) {
         versions[player.uniqueId] = version
     }
 
+    /** Drops all cached per-player state on disconnect. */
     fun removeVersion(player: Player) {
         val id = player.uniqueId
         versions.remove(id)
@@ -32,53 +32,53 @@ object PlayerManager {
         displaysEnabled.remove(id)
     }
 
-    @JvmStatic
-    fun getVersion(player: Player): Version? {
+    /** Returns the mod version reported by [player], or null if none was reported. */
+    @JvmStatic fun getVersion(player: Player): Version? {
         return versions[player.uniqueId]
     }
 
-    @JvmStatic
-    fun hasBeenNotifiedAboutModUpdate(player: Player): Boolean {
+    /** Returns true if [player] has already been informed about a mod update. */
+    @JvmStatic fun hasBeenNotifiedAboutModUpdate(player: Player): Boolean {
         return modUpdateNotified[player.uniqueId] ?: false
     }
 
-    @JvmStatic
-    fun setModUpdateNotified(player: Player, notified: Boolean) {
+    /** Marks whether [player] has been notified about a mod update. */
+    @JvmStatic fun setModUpdateNotified(player: Player, notified: Boolean) {
         modUpdateNotified[player.uniqueId] = notified
     }
 
-    @JvmStatic
-    fun hasBeenNotifiedAboutPluginUpdate(player: Player): Boolean {
+    /** Returns true if [player] has already been informed about a plugin update. */
+    @JvmStatic fun hasBeenNotifiedAboutPluginUpdate(player: Player): Boolean {
         return pluginUpdateNotified[player.uniqueId] ?: false
     }
 
-    @JvmStatic
-    fun setPluginUpdateNotified(player: Player, notified: Boolean) {
+    /** Marks whether [player] has been notified about a plugin update. */
+    @JvmStatic fun setPluginUpdateNotified(player: Player, notified: Boolean) {
         pluginUpdateNotified[player.uniqueId] = notified
     }
 
-    @JvmStatic
-    fun hasBeenNotifiedAboutModRequired(player: Player): Boolean {
+    /** Returns true if [player] has already been informed that the mod is required. */
+    @JvmStatic fun hasBeenNotifiedAboutModRequired(player: Player): Boolean {
         return modRequiredNotified[player.uniqueId] ?: false
     }
 
-    @JvmStatic
-    fun setModRequiredNotified(player: Player, notified: Boolean) {
+    /** Marks whether [player] has been notified that the mod is required. */
+    @JvmStatic fun setModRequiredNotified(player: Player, notified: Boolean) {
         modRequiredNotified[player.uniqueId] = notified
     }
 
-    @JvmStatic
-    fun setDisplaysEnabled(player: Player, enabled: Boolean) {
+    /** Sets whether displays should be rendered for [player]. */
+    @JvmStatic fun setDisplaysEnabled(player: Player, enabled: Boolean) {
         displaysEnabled[player.uniqueId] = enabled
     }
 
-    @JvmStatic
-    fun isDisplaysEnabled(player: Player): Boolean {
+    /** Returns whether displays are enabled for [player] (defaults to true). */
+    @JvmStatic fun isDisplaysEnabled(player: Player): Boolean {
         return displaysEnabled.getOrDefault(player.uniqueId, true)
     }
 
-    @JvmStatic
-    fun getVersions(): Map<UUID, Version?> {
+    /** Returns a defensive copy of the per-player version map. */
+    @JvmStatic fun getVersions(): Map<UUID, Version?> {
         return HashMap(versions)
     }
 }

@@ -26,8 +26,7 @@ import java.util.*
  * @property box Bounding box of the display area.
  *
  */
-@NullMarked
-class DisplayData(
+@NullMarked class DisplayData(
     val id: UUID,
     val ownerId: UUID,
     val pos1: Location,

@@ -18,6 +18,10 @@ import java.util.regex.Pattern
 object Updater {
     private val tailPattern = Pattern.compile("\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?")
 
+    /**
+     * Fetches GitHub releases and stores the latest mod and plugin versions in [Main].
+     * Network errors are logged but never propagated, so a transient outage is harmless.
+     */
     fun checkForUpdates(repoOwner: String, repoName: String) {
         try {
             val releases = GitHubFetcherUtil.fetchReleases(repoOwner, repoName)
@@ -52,6 +56,7 @@ object Updater {
         }
     }
 
+    /** Extracts a SemVer string from an arbitrary GitHub release tag, returning null if none found. */
     private fun parseVersion(tag: String): Version? {
         val matcher = tailPattern.matcher(tag)
         return if (matcher.find()) runCatching { Version.parse(matcher.group()) }.getOrNull()

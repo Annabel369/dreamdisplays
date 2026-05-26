@@ -13,6 +13,10 @@ import org.bukkit.Bukkit
  * `Paper` implementation.
  */
 object SelectionVisualizer {
+    /**
+     * Starts a repeating task that draws particle outlines around every ready selection.
+     * No-ops if particles are disabled in config or the server is `Folia` (unsupported there).
+     */
     fun startParticleTask(plugin: Main) {
         if (!config.settings.particlesEnabled) return
         if (isFolia) return

@@ -11,6 +11,7 @@ class HelpCommand : SubCommand {
     override val permission = config.permissions.help
     override val playerOnly = true
 
+    /** Prints the localized help message listing every `/display` subcommand. */
     override fun execute(sender: CommandSender, args: Array<String?>) {
         val player = (sender as? Player) ?: return
 

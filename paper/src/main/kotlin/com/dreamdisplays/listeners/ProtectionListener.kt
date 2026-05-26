@@ -22,10 +22,10 @@ import org.bukkit.event.entity.EntityExplodeEvent
  */
 @Suppress("UNUSED")
 class ProtectionListener : Listener {
-    // Problem: player tries to break a block in a protected area
-    // Solution: cancel event entirely
-    @EventHandler
-    fun onBlockBreak(event: BlockBreakEvent) {
+    /**
+     * Handles block breaking events, checking if the block is protected and canceling if necessary.
+     */
+    @EventHandler fun onBlockBreak(event: BlockBreakEvent) {
         val loc = event.block.location
         if (isContains(loc) != null && PlayerManager.getVersion(event.player) == null) {
             sendMessage(event.player, "displayBlockBreak")
@@ -33,41 +33,40 @@ class ProtectionListener : Listener {
         cancelIfProtected(loc, event)
     }
 
-    // Problem: explosion tries to destroy blocks in a protected area
-    // Solution: remove protected blocks from the list of blocks to be destroyed
-    @EventHandler
-    fun onExplosion(event: EntityExplodeEvent) {
+    /**
+     * Handles explosion events, removing protected blocks from the list of blocks to be destroyed.
+     */
+    @EventHandler fun onExplosion(event: EntityExplodeEvent) {
         event.blockList().removeIf { isLocationProtected(it.location) }
     }
 
-    // Problem: piston tries to move blocks in a protected area
-    // Solution: cancel event entirely
-    @EventHandler
-    fun onPistonExtend(event: BlockPistonExtendEvent) = handlePiston(event.blocks, event)
+    /**
+     * Handles piston movements, checking if the piston is moving blocks protected by displays.
+     */
+    @EventHandler fun onPistonExtend(event: BlockPistonExtendEvent) = handlePiston(event.blocks, event)
 
-    // Problem: piston tries to move blocks in a protected area
-    // Solution: cancel event entirely
-    @EventHandler
-    fun onPistonRetract(event: BlockPistonRetractEvent) = handlePiston(event.blocks, event)
+    /**
+     * Handles piston retraction, checking if the piston is moving blocks protected by displays.
+     */
+    @EventHandler fun onPistonRetract(event: BlockPistonRetractEvent) = handlePiston(event.blocks, event)
 
-    // Problem: some blocks are in a protected area and piston is trying to move them
-    // Solution: cancel event entirely
+    /**
+     * Handles piston movements, checking if the piston is moving blocks protected by displays.
+     */
     private fun handlePiston(blocks: List<Block>, event: Cancellable) {
         if (event.isCancelled) return
         if (blocks.any { isLocationProtected(it.location) }) event.isCancelled = true
     }
 
-    // Problem: location is in a protected area
-    // Solution: cancel the event
+    /**
+     * Handles piston movements, checking if the piston is moving blocks protected by displays.
+     */
     private fun cancelIfProtected(loc: Location, event: Cancellable) {
         if (isLocationProtected(loc)) event.isCancelled = true
     }
 
-    // Problem: check if a location is in a protected area
-    // Solution: check both existing displays and current selections
-    private fun isLocationProtected(loc: Location): Boolean =
-        isContains(loc) != null || isLocationSelected(loc)
-
-    // TODO: add protection for other events like fire spread (if admin has set flammable material for displays)
-    // and fluid flow (but I'm not sure if it's in general necessary)
+    /**
+     * Checks if a location is in a protected area, considering both existing displays and current selections.
+     */
+    private fun isLocationProtected(loc: Location): Boolean = isContains(loc) != null || isLocationSelected(loc)
 }

@@ -18,11 +18,11 @@ import org.jspecify.annotations.NullMarked
  *
  * `Paper` implementation.
  */
-@NullMarked
 @Suppress("UnstableApiUsage")
-class Main : JavaPlugin() {
+@NullMarked class Main : JavaPlugin() {
     lateinit var storage: StorageManager
 
+    /** Captures the plugin instance, loads config, and registers Brigadier commands before any worlds load. */
     override fun onLoad() {
         instance = this
         Companion.config = Config(this)
@@ -31,14 +31,17 @@ class Main : JavaPlugin() {
         }
     }
 
+    /** Standard Bukkit hook, delegates to [doEnable] so reload commands can reuse the logic. */
     override fun onEnable() {
         doEnable()
     }
 
+    /** Standard Bukkit hook, delegates to [doDisable]. */
     override fun onDisable() {
         doDisable()
     }
 
+    /** Initializes scheduler, storage, listeners, channels, and metrics. Safe to call from a reload. */
     fun doEnable() {
         @Suppress("DEPRECATION")
         log("[Dream Displays] Enabling Dream Displays ${description.version}...")
@@ -54,6 +57,7 @@ class Main : JavaPlugin() {
         Metrics(this, 26488)
     }
 
+    /** Persists state and tears down resources. Safe to call from a reload. */
     fun doDisable() {
         log("[Dream Displays] Disabling Dream Displays ${pluginMeta.version}...")
         storage.onDisable()
@@ -61,12 +65,13 @@ class Main : JavaPlugin() {
 
     companion object {
         lateinit var config: Config
-
         var modVersion: Version? = null
         var pluginLatestVersion: String? = null
 
+        /** Returns the singleton plugin instance. */
         fun getInstance(): Main = instance
 
+        /** Forces Bukkit to disable this plugin (used when fatal startup errors occur). */
         fun disablePlugin() {
             instance.server.pluginManager.disablePlugin(instance)
         }

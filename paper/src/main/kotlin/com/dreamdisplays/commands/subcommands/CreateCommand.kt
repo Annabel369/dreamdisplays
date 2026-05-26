@@ -16,6 +16,10 @@ class CreateCommand : SubCommand {
     override val permission = config.permissions.create
     override val playerOnly = true
 
+    /**
+     * Validates the player's current selection, enforces overlap and Y-range limits, and
+     * registers the resulting display.
+     */
     override fun execute(sender: CommandSender, args: Array<String?>) {
         val player = (sender as? Player) ?: return
 

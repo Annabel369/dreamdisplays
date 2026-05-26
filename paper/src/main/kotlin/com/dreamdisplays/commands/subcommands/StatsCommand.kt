@@ -12,6 +12,7 @@ class StatsCommand : SubCommand {
     override val name = "stats"
     override val permission = config.permissions.stats
 
+    /** Prints a per-mod-version count of currently connected players that have reported a version. */
     override fun execute(sender: CommandSender, args: Array<String?>) {
         val versions = getVersions()
         val counts = versions.values
@@ -30,6 +31,7 @@ class StatsCommand : SubCommand {
         sendColoredMessage(sender, format(sender, "displayStatsTotal", total))
     }
 
+    /** Looks up the localized template for [key] and substitutes [values] via `String.format`. */
     private fun format(sender: CommandSender, key: String, vararg values: Any): String {
         val template = config.getMessageForPlayer(sender as? Player, key) as? String ?: key
         return runCatching { String.format(template, *values) }.getOrElse { template }

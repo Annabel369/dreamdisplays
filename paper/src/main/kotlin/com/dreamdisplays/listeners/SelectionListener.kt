@@ -25,13 +25,12 @@ import org.bukkit.inventory.EquipmentSlot.HAND
  * `Paper` implementation.
  */
 class SelectionListener(plugin: Main) : Listener {
-
     init {
         startParticleTask(plugin)
     }
 
-    @EventHandler
-    fun onPlayerInteract(event: PlayerInteractEvent) {
+    /** Handles diamond-axe interactions: left-click sets pos1, right-click sets pos2, shift-right resets. */
+    @EventHandler fun onPlayerInteract(event: PlayerInteractEvent) {
         if (event.hand != HAND) return
         val player = event.player
         val block = event.clickedBlock ?: return

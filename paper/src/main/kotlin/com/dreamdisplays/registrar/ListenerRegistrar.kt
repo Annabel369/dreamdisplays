@@ -12,6 +12,7 @@ import org.bukkit.Bukkit
  * `Paper` implementation.
  */
 object ListenerRegistrar {
+    /** Registers selection, protection, and player listeners with `Bukkit`. */
     fun registerListeners(plugin: Main) {
         val pm = Bukkit.getPluginManager()
         pm.registerEvents(SelectionListener(plugin), plugin)

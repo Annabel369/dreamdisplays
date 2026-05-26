@@ -9,7 +9,6 @@ import com.dreamdisplays.utils.net.PacketReceiver
  * `Paper` implementation.
  */
 object ChannelRegistrar {
-
     private val incomingChannels = listOf(
         "dreamdisplays:sync",
         "dreamdisplays:req_sync",
@@ -31,6 +30,7 @@ object ChannelRegistrar {
         "dreamdisplays:clear_cache"
     )
 
+    /** Registers all incoming and outgoing plugin messaging channels for this plugin. */
     fun registerChannels(plugin: Main) {
         val messenger = plugin.server.messenger
         val receiver = PacketReceiver(plugin)

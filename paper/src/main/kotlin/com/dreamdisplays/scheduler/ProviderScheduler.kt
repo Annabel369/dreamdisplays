@@ -9,9 +9,7 @@ import org.jspecify.annotations.NullMarked
  *
  * `Paper` implementation.
  */
-@NullMarked
-object ProviderScheduler {
-
+@NullMarked object ProviderScheduler {
     val adapter: AdapterScheduler by lazy {
         if (isFolia) FoliaScheduler else BukkitScheduler
     }

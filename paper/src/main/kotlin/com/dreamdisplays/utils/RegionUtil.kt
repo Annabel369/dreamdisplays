@@ -11,8 +11,8 @@ import kotlin.math.min
  *
  * `Paper` implementation.
  */
-@NullMarked
-object RegionUtil {
+@NullMarked object RegionUtil {
+    /** Computes the [RegionData] describing the axis-aligned box between [pos1] and [pos2]. */
     fun calculateRegion(pos1: Location, pos2: Location): RegionData {
         val minX = min(pos1.blockX, pos2.blockX)
         val minY = min(pos1.blockY, pos2.blockY)
@@ -35,6 +35,7 @@ object RegionUtil {
         )
     }
 
+    /** Returns true if [location] lies within the box defined by [pos1] and [pos2] (same world required). */
     fun isInBoundaries(pos1: Location, pos2: Location, location: Location): Boolean {
         if (location.world != pos1.world) return false
 
@@ -43,6 +44,7 @@ object RegionUtil {
                 location.blockZ in getRange(pos1.blockZ, pos2.blockZ)
     }
 
+    /** Returns the inclusive integer range covering [a] and [b] regardless of order. */
     private fun getRange(a: Int, b: Int): IntRange {
         return min(a, b)..max(a, b)
     }
@@ -60,10 +62,12 @@ object RegionUtil {
         val deltaZ: Int,
     ) {
 
+        /** Returns the min-corner [Location] of this region in [world]. */
         fun getMinLocation(world: World?): Location {
             return Location(world, minX.toDouble(), minY.toDouble(), minZ.toDouble())
         }
 
+        /** Returns the max-corner [Location] of this region in [world]. */
         fun getMaxLocation(world: World?): Location {
             return Location(world, maxX.toDouble(), maxY.toDouble(), maxZ.toDouble())
         }

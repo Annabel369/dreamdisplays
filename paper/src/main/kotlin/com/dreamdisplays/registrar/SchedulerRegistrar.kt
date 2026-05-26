@@ -16,8 +16,8 @@ object SchedulerRegistrar {
     private const val DISPLAY_UPDATE_INTERVAL_TICKS = 1L * TICKS_PER_SECOND
     private const val UPDATE_CHECK_INTERVAL_TICKS = 60L * 60L * TICKS_PER_SECOND
 
+    /** Schedules the periodic display update tick and, when enabled, the hourly update check. */
     fun runRepeatingTasks(plugin: Main) {
-        // Update displays every second
         ProviderScheduler.adapter.runRepeatingAsync(
             plugin,
             DISPLAY_UPDATE_INTERVAL_TICKS,
@@ -26,8 +26,6 @@ object SchedulerRegistrar {
             DisplayManager.updateAllDisplays()
             StateManager.tickBroadcast()
         }
-
-        // Check for updates every hour
         val settings = Main.config.settings
         if (settings.updatesEnabled) {
             ProviderScheduler.adapter.runRepeatingAsync(

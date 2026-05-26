@@ -9,13 +9,15 @@ import java.util.*
  *
  * `Paper` implementation.
  */
-@NullMarked
-object YouTubeUtil {
-
+@NullMarked object YouTubeUtil {
     private val SANITIZE_REGEX = "[^0-9A-Za-z+.-]".toRegex()
     private val VIDEO_ID_REGEX = Regex("^[A-Za-z0-9_-]{11}$")
     private val VIDEO_ID_IN_TEXT_REGEX = Regex("""(?:v=|/)([A-Za-z0-9_-]{11})(?=$|[?&#/])""")
 
+    /**
+     * Resolves an 11-character YouTube video ID from a URL, partial URL, or bare ID.
+     * Returns null if no valid ID can be derived.
+     */
     fun extractVideoIdFromUri(url: String): String? {
         val input = url.trim()
         if (input.isEmpty()) return null
@@ -31,6 +33,7 @@ object YouTubeUtil {
         }.getOrNull() ?: extractVideoIdFromText(input)
     }
 
+    /** Pulls a video ID from a parsed `youtube.com` or `youtu.be` [uri], covering all known path layouts. */
     private fun extractVideoIdFromParsedUri(uri: URI): String? {
         val host = uri.host?.lowercase(Locale.ROOT) ?: return null
         val pathSegments = uri.path
@@ -65,6 +68,7 @@ object YouTubeUtil {
         return null
     }
 
+    /** Falls back to a regex scan of [text] when URI parsing fails to find an ID. */
     private fun extractVideoIdFromText(text: String): String? {
         return VIDEO_ID_IN_TEXT_REGEX.find(text)
             ?.groupValues
@@ -72,6 +76,7 @@ object YouTubeUtil {
             ?.let { normalizeVideoId(it) }
     }
 
+    /** Returns the first value of [paramName] in a raw `?key=value&...` query string, or null. */
     private fun parseQueryParameter(query: String, paramName: String): String? {
         return query.split("&")
             .firstNotNullOfOrNull { param ->
@@ -82,11 +87,13 @@ object YouTubeUtil {
             }
     }
 
+    /** Strips characters disallowed in language codes from [raw]; returns null if [raw] is null. */
     fun sanitize(raw: String?): String? {
         if (raw == null) return null
         return raw.trim().replace(SANITIZE_REGEX, "")
     }
 
+    /** Trims query/fragment noise from [value] and returns it only if it matches the YouTube ID shape. */
     private fun normalizeVideoId(value: String): String? {
         val cleaned = value
             .trim()

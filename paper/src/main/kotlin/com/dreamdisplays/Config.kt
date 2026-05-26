@@ -40,6 +40,7 @@ class Config(private val plugin: Main) {
         loadMessages()
     }
 
+    /** Copies the bundled `config.toml` into the plugin folder on first run. */
     private fun createDefaultConfig() {
         if (!configFile.exists()) {
             plugin.dataFolder.mkdirs()
@@ -50,6 +51,7 @@ class Config(private val plugin: Main) {
     }
 
     // Load configuration
+    /** Parses `config.toml`, falling back to defaults when sections are missing or malformed. */
     private fun load() {
         toml = try {
             Toml().read(configFile)
@@ -65,6 +67,7 @@ class Config(private val plugin: Main) {
     }
 
     // Reload configuration
+    /** Re-reads `config.toml`, re-extracts language files and refreshes the in-memory message map. */
     fun reload() {
         load()
         extractLangFiles(false)
@@ -72,6 +75,7 @@ class Config(private val plugin: Main) {
     }
 
     // Extract language files
+    /** Copies bundled language JSONs into the plugin's `lang/` folder; overwrites when [overwrite] is true. */
     private fun extractLangFiles(overwrite: Boolean) {
         val langFolder = File(plugin.dataFolder, "lang")
         if (!langFolder.exists() && !langFolder.mkdirs()) {
@@ -94,6 +98,7 @@ class Config(private val plugin: Main) {
     }
 
     // Load messages from language file
+    /** Parses every language JSON in `lang/` into `languages` and reseeds the English fallback map. */
     private fun loadMessages() {
         languages.clear()
         LANGUAGE_FILES.forEach { fileName ->
@@ -153,6 +158,7 @@ class Config(private val plugin: Main) {
         val maxHeight get() = display.max_height
         val maxRenderDistance get() = display.max_render_distance
 
+        /** Resolves [Material] names from the TOML, defaulting to diamond axe and black concrete. */
         internal fun initMaterials() {
             selectionMaterial = Material.matchMaterial(display.selection_material) ?: Material.DIAMOND_AXE
             baseMaterial = Material.matchMaterial(display.base_material) ?: Material.BLACK_CONCRETE
@@ -240,6 +246,10 @@ class Config(private val plugin: Main) {
         )
     }
 
+    /**
+     * Resolves [key] in [player]'s locale, then in the configured default, then in the English fallback.
+     * Returns null when no translation exists in any language.
+     */
     @Suppress("DEPRECATION")
     fun getMessageForPlayer(player: Player?, key: String): Any? {
         val locale = player?.locale ?: "en_us"
@@ -250,6 +260,7 @@ class Config(private val plugin: Main) {
             ?: messages[key]
     }
 
+    /** Maps a Minecraft locale string (e.g. `ru_ru`) to the plugin's short language code (e.g. `ru`). */
     private fun mapLocaleToLang(locale: String): String {
         return when (val normalized = locale.lowercase()) {
             "ru_ru" -> "ru"

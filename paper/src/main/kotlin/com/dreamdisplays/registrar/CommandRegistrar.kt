@@ -18,7 +18,7 @@ import org.bukkit.entity.Player
  */
 @Suppress("UnstableApiUsage")
 object CommandRegistrar {
-
+    /** Builds the full `Brigadier` tree for the `/display` command with all subcommands. */
     fun buildDisplayCommand(): LiteralCommandNode<CommandSourceStack> = Commands.literal("display")
         .executes { ctx ->
             HelpCommand().execute(ctx.source.sender, emptyArray())
@@ -48,6 +48,7 @@ object CommandRegistrar {
         .then(toggleSubCommand("off", OffCommand()))
         .build()
 
+    /** Builds a simple no-argument subcommand node optionally guarded by a permission check. */
     private fun simple(
         name: String,
         cmd: SubCommand,
@@ -61,6 +62,7 @@ object CommandRegistrar {
         }
     }
 
+    /** Builds the `/display video <url> [lang]` subcommand with greedy argument and language suggestions. */
     private fun videoSubCommand() = Commands.literal("video")
         .requires { it.sender is Player && it.sender.hasPermission(Main.config.permissions.video) }
         .then(
@@ -86,6 +88,7 @@ object CommandRegistrar {
                 }
         )
 
+    /** Builds an on / off toggle subcommand that optionally targets another player. */
     private fun toggleSubCommand(name: String, cmd: SubCommand) = Commands.literal(name)
         .executes { ctx ->
             cmd.execute(ctx.source.sender, arrayOf(name))
@@ -105,6 +108,7 @@ object CommandRegistrar {
                 }
         )
 
+    /** Builds the `/display list [filter] [value] [page]` subcommand with progressive suggestions. */
     private fun listSubCommand(): LiteralArgumentBuilder<CommandSourceStack> {
         val cmd = ListCommand()
         return Commands.literal("list")

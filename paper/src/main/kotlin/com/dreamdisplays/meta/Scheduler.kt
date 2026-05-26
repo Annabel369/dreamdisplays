@@ -10,30 +10,34 @@ import java.lang.reflect.Proxy
  *
  * `Paper` implementation.
  */
-@NullMarked
-object Scheduler {
+@NullMarked object Scheduler {
 
     private lateinit var plugin: Plugin
 
+    /** Binds the scheduler to its owning [plugin]. Must be called before any scheduling helper. */
     fun init(plugin: Plugin) {
         this.plugin = plugin
     }
 
+    /** Runs [task] off the main thread, transparently dispatching to `Folia` when present. */
     fun runAsync(task: Runnable) {
         if (isFolia) foliaRunAsync(task)
         else plugin.server.scheduler.runTaskAsynchronously(plugin, task)
     }
 
+    /** Runs [task] on the main/global region thread, transparently dispatching to Folia when present. */
     fun runSync(task: Runnable) {
         if (isFolia) foliaRunSync(task)
         else plugin.server.scheduler.runTask(plugin, task)
     }
 
+    /** Runs [task] after [ticks] ticks on the main/global region thread (Folia-aware). */
     fun runLater(ticks: Long, task: Runnable) {
         if (isFolia) foliaRunGlobalLater(ticks, task)
         else plugin.server.scheduler.runTaskLater(plugin, task, ticks)
     }
 
+    /** `Folia` path for [runAsync]: reflects into the async scheduler and falls back to inline run. */
     private fun foliaRunAsync(task: Runnable) {
         runCatching {
             val scheduler = Class.forName("org.bukkit.Bukkit")
@@ -45,6 +49,7 @@ object Scheduler {
         }.getOrElse { task.run() }
     }
 
+    /** Folia path for [runSync]: reflects into the global region scheduler and falls back inline. */
     private fun foliaRunSync(task: Runnable) {
         runCatching {
             val scheduler = Class.forName("org.bukkit.Bukkit")
@@ -56,6 +61,7 @@ object Scheduler {
         }.getOrElse { task.run() }
     }
 
+    /** `Folia` path for [runLater]: schedules via the global region scheduler with a tick delay. */
     private fun foliaRunGlobalLater(ticks: Long, task: Runnable) {
         runCatching {
             val scheduler = Class.forName("org.bukkit.Bukkit")
@@ -69,6 +75,7 @@ object Scheduler {
 
     private val consumerClass = Class.forName("java.util.function.Consumer")
 
+    /** Wraps [task] in a `java.util.function.Consumer` proxy required by `Folia`'s scheduler API. */
     private fun consumer(task: Runnable): Any =
         Proxy.newProxyInstance(
             consumerClass.classLoader,

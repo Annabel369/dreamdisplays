@@ -15,9 +15,7 @@ import java.util.*
  * @param limitTime Limit time for the playback.
  *
  */
-@NullMarked
-@JvmRecord
-data class SyncData(
+@JvmRecord @NullMarked data class SyncData(
     val id: UUID?,
     val isSync: Boolean,
     val currentState: Boolean,

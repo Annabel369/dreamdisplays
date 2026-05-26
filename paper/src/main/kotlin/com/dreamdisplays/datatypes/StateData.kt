@@ -21,15 +21,14 @@ import java.util.*
  * @throws IllegalStateException if the display data is not found for the given ID.
  *
  */
-@NullMarked
-class StateData(private val id: UUID) {
+@NullMarked class StateData(private val id: UUID) {
     private var displayData: DisplayData? = getDisplayData(id)
-
     private var paused = false
     private var lastReportedTime: Long = 0
     private var lastReportedTimestamp: Long = 0
     private var limitTime: Long = 0
 
+    /** Applies a client-reported [SyncData] packet to the local state. */
     fun update(packet: SyncData) {
         paused = packet.currentState
         lastReportedTime = packet.currentTime
@@ -37,6 +36,10 @@ class StateData(private val id: UUID) {
         limitTime = packet.limitTime
     }
 
+    /**
+     * Builds a fresh [SyncData] packet describing the current playback position,
+     * wrapping the time around the display's duration when known.
+     */
     fun createPacket(): SyncData {
         val nanos = System.nanoTime()
         val currentTime = if (paused) {

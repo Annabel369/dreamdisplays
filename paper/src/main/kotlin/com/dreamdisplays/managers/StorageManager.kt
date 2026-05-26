@@ -22,8 +22,7 @@ import java.util.*
  *
  * `Paper` implementation.
  */
-@NullMarked
-class StorageManager(var plugin: Main) {
+@NullMarked class StorageManager(var plugin: Main) {
     var connection: BaseConnection? = null
     var tablePrefix: String? = null
 
@@ -47,6 +46,10 @@ class StorageManager(var plugin: Main) {
         Scheduler.runAsync(connectTask)
     }
 
+    /**
+     * Creates the displays table if missing, applies in-place column migrations (`lang`, `isLocked`),
+     * and loads previously stored displays into the runtime registry.
+     */
     @Throws(SQLException::class)
     private fun onConnect() {
         val conn = connection ?: throw SQLException("[StorageManager] Connection is null.")
@@ -86,6 +89,7 @@ class StorageManager(var plugin: Main) {
         register(this.allDisplays.filterNotNull())
     }
 
+    /** Persists all in-memory displays and closes the database connection on plugin shutdown. */
     fun onDisable() {
         val conn = connection ?: return
 
@@ -97,6 +101,7 @@ class StorageManager(var plugin: Main) {
         }
     }
 
+    /** Serializes [uuid] into its canonical 16-byte big-endian form for database storage. */
     private fun uuidToBytes(uuid: UUID): ByteArray {
         val buf = ByteBuffer.allocate(16)
         buf.putLong(uuid.mostSignificantBits)
@@ -104,6 +109,7 @@ class StorageManager(var plugin: Main) {
         return buf.array()
     }
 
+    /** Reconstructs a [UUID] from a 16-byte big-endian array; throws for any other length. */
     private fun bytesToUuid(bytes: ByteArray): UUID {
         if (bytes.size != 16) throw IllegalArgumentException("[StorageManager] UUID byte array must be 16 bytes, got ${bytes.size}.")
         val buf = ByteBuffer.wrap(bytes)
@@ -112,6 +118,7 @@ class StorageManager(var plugin: Main) {
         return UUID(msb, lsb)
     }
 
+    /** Upserts the full row for [data] into the displays table. */
     fun saveDisplay(data: DisplayData) {
         val conn = connection ?: run {
             error("[StorageManager] Cannot save display: connection is null.")
@@ -263,6 +270,7 @@ class StorageManager(var plugin: Main) {
             return list
         }
 
+    /** Removes the row corresponding to [data] from the displays table. */
     fun deleteDisplay(data: DisplayData) {
         val conn = connection ?: run {
             error("[StorageManager] Cannot delete display: connection is null.")
@@ -279,30 +287,37 @@ class StorageManager(var plugin: Main) {
     }
 
     companion object {
+        /** Packs a block position into a single Long (26 bits X, 26 Z, 12 Y), Minecraft's standard layout. */
         private fun packBlockPos(x: Int, y: Int, z: Int): Long {
             return ((x and 0x3FFFFFF).toLong() shl 38) or ((z and 0x3FFFFFF).toLong() shl 12) or (y and 0xFFF).toLong()
         }
 
+        /** Extracts the X coordinate from a packed block position. */
         private fun unpackX(packed: Long): Int {
             return (packed shr 38).toInt()
         }
 
+        /** Extracts the Y coordinate from a packed block position (sign-extended from 12 bits). */
         private fun unpackY(packed: Long): Int {
             return (packed shl 52 shr 52).toInt()
         }
 
+        /** Extracts the Z coordinate from a packed block position (sign-extended from 26 bits). */
         private fun unpackZ(packed: Long): Int {
             return (packed shl 26 shr 38).toInt()
         }
 
+        /** Packs two 32-bit ints into a single Long (used for width / height storage). */
         fun pack(high: Int, low: Int): Long {
             return ((high.toLong()) shl 32) or (low.toLong() and 0xFFFFFFFFL)
         }
 
+        /** Returns the high 32 bits of a value packed by [pack]. */
         fun unpackHigh(packed: Long): Int {
             return (packed shr 32).toInt()
         }
 
+        /** Returns the low 32 bits of a value packed by [pack]. */
         fun unpackLow(packed: Long): Int {
             return packed.toInt()
         }

@@ -17,6 +17,10 @@ class VideoCommand : SubCommand {
     override val permission = Main.config.permissions.video
     override val playerOnly = true
 
+    /**
+     * Assigns a YouTube URL (and optional language) to the targeted display owned by the player,
+     * rebroadcasting the new state and resetting sync playback when the display was synced.
+     */
     override fun execute(sender: CommandSender, args: Array<String?>) {
         val player = (sender as? Player) ?: return
         if (args.size < 2) {
@@ -58,6 +62,7 @@ class VideoCommand : SubCommand {
         MessageUtil.sendMessage(player, "settedURL")
     }
 
+    /** Suggests known two-letter language codes when completing the third argument. */
     override fun complete(sender: CommandSender, args: Array<String?>): List<String> {
         if (args.size == 3) {
             return languageSuggestions
@@ -65,6 +70,7 @@ class VideoCommand : SubCommand {
         return emptyList()
     }
 
+    /** Lowercases [raw], trims region suffixes and maps the `ua` alias to the canonical `uk`. */
     private fun normalizeLangCode(raw: String): String {
         val base = raw.trim()
             .lowercase(Locale.ROOT)

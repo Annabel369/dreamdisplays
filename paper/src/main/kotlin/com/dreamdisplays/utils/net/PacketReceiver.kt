@@ -45,12 +45,12 @@ import java.util.*
  *
  * `Paper` implementation.
  */
-@NullMarked
-class PacketReceiver(private val plugin: Main) : PluginMessageListener {
+@NullMarked class PacketReceiver(private val plugin: Main) : PluginMessageListener {
 
     private val gson by lazy { Gson() }
     private val maxVersionBytes = 128
 
+    /** Routes an incoming plugin message to the per-channel handler. */
     override fun onPluginMessageReceived(channel: String, player: Player, message: ByteArray) {
         when (channel) {
             "dreamdisplays:sync" -> handleSyncPacket(player, message)
@@ -64,6 +64,7 @@ class PacketReceiver(private val plugin: Main) : PluginMessageListener {
         }
     }
 
+    /** Decodes a sync packet from [player] and forwards it to [StateManager.processSyncPacket]. */
     private fun handleSyncPacket(player: Player, message: ByteArray) {
         runCatching {
             DataInputStream(ByteArrayInputStream(message)).use { input ->
@@ -81,12 +82,14 @@ class PacketReceiver(private val plugin: Main) : PluginMessageListener {
         }
     }
 
+    /** Replies to a client `req_sync` packet with the current authoritative sync state. */
     private fun handleRequestSync(player: Player, message: ByteArray) {
         readUUIDPacket(message)?.let { displayId ->
             sendSyncPacket(displayId, player)
         }
     }
 
+    /** Handles a client-requested deletion, enforcing owner-or-permission check. */
     private fun handleDelete(player: Player, message: ByteArray) {
         readUUIDPacket(message)?.let { displayId ->
             val displayData = getDisplayData(displayId)
@@ -104,12 +107,14 @@ class PacketReceiver(private val plugin: Main) : PluginMessageListener {
         }
     }
 
+    /** Forwards a client report request to [DisplayManager.report]. */
     private fun handleReport(player: Player, message: ByteArray) {
         readUUIDPacket(message)?.let { displayId ->
             report(displayId, player)
         }
     }
 
+    /** Records the player's reported mod version and triggers the initial sync and update checks. */
     private fun handleVersion(player: Player, message: ByteArray) {
         runCatching {
             val version = readVersionString(message)
@@ -122,6 +127,7 @@ class PacketReceiver(private val plugin: Main) : PluginMessageListener {
         }
     }
 
+    /** Persists a client toggle for whether [player] wants to render displays. */
     private fun handleDisplayEnabled(player: Player, message: ByteArray) {
         runCatching {
             DataInputStream(ByteArrayInputStream(message)).use { input ->
@@ -133,6 +139,7 @@ class PacketReceiver(private val plugin: Main) : PluginMessageListener {
         }
     }
 
+    /** Sends premium/admin/report flags, the in-world display batch, and stores [player]'s version. */
     private fun initializePlayer(player: Player, versionString: String) {
         // Check for premium permission and send status
         sendPremium(
@@ -160,6 +167,7 @@ class PacketReceiver(private val plugin: Main) : PluginMessageListener {
         setVersion(player, version)
     }
 
+    /** Compares [player]'s reported version against the cached mod/plugin versions and notifies once. */
     private fun checkForUpdates(player: Player, versionString: String) {
         val userVersion = parseVersionOrNull(versionString) ?: return
 
@@ -174,6 +182,7 @@ class PacketReceiver(private val plugin: Main) : PluginMessageListener {
         }
     }
 
+    /** Tells [player] about a newer mod version if they haven't been notified this session. */
     private fun checkModUpdate(player: Player, userVersion: Version) {
         val latestVersion = modVersion ?: return
 
@@ -183,6 +192,7 @@ class PacketReceiver(private val plugin: Main) : PluginMessageListener {
         }
     }
 
+    /** Tells privileged [player] about a newer plugin release; skipped for `-SNAPSHOT` builds. */
     @Suppress("DEPRECATION")
     private fun checkPluginUpdate(player: Player) {
         val latestPluginVersion = Main.pluginLatestVersion ?: return
@@ -203,6 +213,7 @@ class PacketReceiver(private val plugin: Main) : PluginMessageListener {
         }
     }
 
+    /** Sends the localized `newVersion` message to [player], handling both plain and JSON templates. */
     private fun sendModUpdateMessage(player: Player, version: Version) {
         val message = when (val rawMessage = config.getMessageForPlayer(player, "newVersion")) {
             is String -> String.format(rawMessage, version.toString())
@@ -222,12 +233,14 @@ class PacketReceiver(private val plugin: Main) : PluginMessageListener {
         sendColoredMessage(player, message)
     }
 
+    /** Sends the localized `newPluginVersion` message with the latest version interpolated in. */
     private fun sendPluginUpdateMessage(player: Player, version: String) {
         val template = config.getMessageForPlayer(player, "newPluginVersion") as? String ?: return
         val message = String.format(template, version)
         sendColoredMessage(player, message)
     }
 
+    /** Streams every display in [player]'s world to them in small staggered batches. */
     private fun sendAllDisplays(player: Player) {
         val displays = getDisplays().filter { it.pos1.world == player.world }
         if (displays.isEmpty()) return
@@ -246,6 +259,7 @@ class PacketReceiver(private val plugin: Main) : PluginMessageListener {
         }
     }
 
+    /** Sends a single batch of `DisplayInfo` packets to [player]. */
     private fun sendDisplayBatch(player: Player, displays: List<com.dreamdisplays.datatypes.DisplayData>) {
         displays.forEach { display ->
             sendDisplayInfo(
@@ -264,6 +278,7 @@ class PacketReceiver(private val plugin: Main) : PluginMessageListener {
         }
     }
 
+    /** Applies a client-supplied URL/language to a display, broadcasting and resetting sync state. */
     private fun handleSetVideo(player: Player, message: ByteArray) {
         runCatching {
             DataInputStream(ByteArrayInputStream(message)).use { input ->
@@ -292,6 +307,7 @@ class PacketReceiver(private val plugin: Main) : PluginMessageListener {
         }
     }
 
+    /** Updates the locked flag of a display owned by [player] and rebroadcasts. */
     private fun handleSetLocked(player: Player, message: ByteArray) {
         runCatching {
             DataInputStream(ByteArrayInputStream(message)).use { input ->
@@ -315,6 +331,7 @@ class PacketReceiver(private val plugin: Main) : PluginMessageListener {
         }
     }
 
+    /** Reads a single UUID payload, logging and returning null on decode failure. */
     private fun readUUIDPacket(message: ByteArray): UUID? {
         return runCatching {
             DataInputStream(ByteArrayInputStream(message)).use { input ->
@@ -325,6 +342,7 @@ class PacketReceiver(private val plugin: Main) : PluginMessageListener {
         }.getOrNull()
     }
 
+    /** Reads a length-prefixed version string with strict bounds checks to reject malformed payloads. */
     private fun readVersionString(message: ByteArray): String {
         return DataInputStream(ByteArrayInputStream(message)).use { input ->
             val length = input.readVarInt()
@@ -340,15 +358,20 @@ class PacketReceiver(private val plugin: Main) : PluginMessageListener {
         }
     }
 
+    /** Sanitizes [raw] and parses it as a [Version], returning null if the result is not a valid SemVer. */
     private fun parseVersionOrNull(raw: String): Version? {
         val sanitized = sanitize(raw)?.takeIf { it.isNotEmpty() } ?: return null
         return runCatching { parse(sanitized) }.getOrNull()
     }
 
     // Extension functions for DataInputStream to read custom data types
+    /** Reads a 128-bit UUID using the shared encoding in [PacketUtil]. */
     private fun DataInputStream.readUUID() = PacketUtil.run { readUUID() }
+    /** Reads a Minecraft-style VarInt using the shared encoding in [PacketUtil]. */
     private fun DataInputStream.readVarInt() = PacketUtil.run { readVarInt() }
+    /** Reads a Minecraft-style VarLong using the shared encoding in [PacketUtil]. */
     private fun DataInputStream.readVarLong() = PacketUtil.run { readVarLong() }
+    /** Reads a UTF-8 string prefixed by its byte length as a VarInt. */
     private fun DataInputStream.readString(): String {
         val length = readVarInt()
         val data = ByteArray(length)

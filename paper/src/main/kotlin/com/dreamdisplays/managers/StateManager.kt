@@ -11,15 +11,17 @@ import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
 /** Manages sync (playback state) for displays server-side. */
-@NullMarked
-object StateManager {
+@NullMarked object StateManager {
     private val playStates: MutableMap<UUID, StateData> = ConcurrentHashMap()
     private val lastSyncBroadcast: MutableMap<UUID, Long> = ConcurrentHashMap()
-
     private const val SYNC_MIN_INTERVAL_MS = 250L
+    private const val PERIODIC_BROADCAST_INTERVAL_MS = 2000L
 
-    @JvmStatic
-    fun processSyncPacket(packet: SyncData, player: Player) {
+    /**
+     * Handles a sync packet from [player]: validates it, updates the per-display state,
+     * and rebroadcasts to other receivers (rate-limited to avoid packet floods).
+     */
+    @JvmStatic fun processSyncPacket(packet: SyncData, player: Player) {
         val displayId = packet.id ?: return
         val data = getDisplayData(displayId)
         if (data != null) data.isSync = packet.isSync
@@ -64,8 +66,8 @@ object StateManager {
         )
     }
 
-    @JvmStatic
-    fun sendSyncPacket(id: UUID?, player: Player?) {
+    /** Sends the current sync packet for display [id] to a single [player], if state exists. */
+    @JvmStatic fun sendSyncPacket(id: UUID?, player: Player?) {
         val displayId = id ?: return
         val state = playStates[displayId] ?: return
 
@@ -74,8 +76,7 @@ object StateManager {
     }
 
     /** Resets the server-side clock for [displayId] to 0 (called when owner switches video). */
-    @JvmStatic
-    fun resetAndBroadcast(displayId: UUID, receivers: List<Player>) {
+    @JvmStatic fun resetAndBroadcast(displayId: UUID, receivers: List<Player>) {
         val display = getDisplayData(displayId) ?: return
         val state = playStates.computeIfAbsent(displayId) { id -> StateData(id) }
         state.update(SyncData(displayId, true, false, 0L, 0L))
@@ -88,8 +89,7 @@ object StateManager {
      * Periodically broadcasts the current sync packet for every active sync display to keep
      * clients in lockstep. Without this, clients drift after the initial sync.
      */
-    @JvmStatic
-    fun tickBroadcast() {
+    @JvmStatic fun tickBroadcast() {
         if (playStates.isEmpty()) return
         val now = System.currentTimeMillis()
         for ((displayId, state) in playStates) {
@@ -102,6 +102,4 @@ object StateManager {
             if (receivers.isNotEmpty()) PacketUtil.sendSync(receivers.toMutableList(), state.createPacket())
         }
     }
-
-    private const val PERIODIC_BROADCAST_INTERVAL_MS = 2000L
 }

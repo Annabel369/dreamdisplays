@@ -14,6 +14,7 @@ class InfoCommand : SubCommand {
     override val permission = Main.config.permissions.info
     override val playerOnly = true
 
+    /** Prints the owner, UUID, region, size and media metadata of the targeted display. */
     override fun execute(sender: CommandSender, args: Array<String?>) {
         val player = sender as? Player ?: return
 
@@ -75,14 +76,17 @@ class InfoCommand : SubCommand {
         )
     }
 
+    /** Returns the localized message for [key] in [player]'s language, or [key] as fallback. */
     private fun text(player: Player, key: String): String {
         return Main.config.getMessageForPlayer(player, key) as? String ?: key
     }
 
+    /** Resolves the localized template for [key] and substitutes positional [args] into it. */
     private fun format(player: Player, key: String, vararg args: String): String {
         return applyPlaceholders(text(player, key), *args)
     }
 
+    /** Replaces `{0}`, `{1}`, … placeholders in [template] with the matching value from [values]. */
     private fun applyPlaceholders(template: String, vararg values: String): String {
         var result = template
         values.forEachIndexed { index, value ->

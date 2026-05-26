@@ -21,12 +21,12 @@ import java.util.*
  */
 // TODO: add rate limiting to prevent spam
 // TODO: customize embed further (add more fields, etc.)
-@NullMarked
-object ReporterUtil {
+@NullMarked object ReporterUtil {
     private val httpClient: HttpClient by lazy { HttpClient.newHttpClient() }
     private const val EMBED_COLOR = 0x2F3136
     private const val EMBED_TITLE = "# 🛡️ New report"
 
+    /** Builds and posts a report embed to the configured Discord webhook. */
     fun sendReport(
         location: Location,
         videoLink: String?,
@@ -46,6 +46,7 @@ object ReporterUtil {
         sendWebhookRequest(webhookUrl, payload)
     }
 
+    /** Builds the JSON body of the Discord webhook request with a single embed. */
     private fun buildWebhookPayload(
         location: Location,
         videoLink: String?,
@@ -65,6 +66,7 @@ object ReporterUtil {
         }.toString()
     }
 
+    /** Builds the embed's `fields` array with location, video, UUID, reporter and owner. */
     private fun buildFields(
         location: Location,
         videoLink: String?,
@@ -81,6 +83,7 @@ object ReporterUtil {
         }
     }
 
+    /** Creates one Discord embed field, falling back to `"N/A"` when [value] is null. */
     private fun createField(name: String, value: String?, inline: Boolean): JsonObject {
         return JsonObject().apply {
             addProperty("name", name)
@@ -89,6 +92,7 @@ object ReporterUtil {
         }
     }
 
+    /** Posts the JSON [payload] to [webhookUrl]; throws on any non-2xx response. */
     private fun sendWebhookRequest(webhookUrl: String, payload: String) {
         val request = HttpRequest.newBuilder()
             .uri(URI.create(webhookUrl))

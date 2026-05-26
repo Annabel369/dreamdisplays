@@ -35,6 +35,7 @@ class ListCommand : SubCommand {
     override val name = "list"
     override val permission = Main.config.permissions.list
 
+    /** Renders a paged, filterable listing of all displays, with `/tp` and URL buttons for players. */
     override fun execute(sender: CommandSender, args: Array<String?>) {
         val displays = sortedDisplays()
         if (displays.isEmpty()) {
@@ -122,6 +123,7 @@ class ListCommand : SubCommand {
         }
     }
 
+    /** Builds tab-completion suggestions for each positional argument (filter keyword, value, page). */
     override fun complete(sender: CommandSender, args: Array<String?>): List<String> {
         val displays = sortedDisplays()
         val ownerNameCache = mutableMapOf<UUID, String?>()
@@ -168,6 +170,7 @@ class ListCommand : SubCommand {
         }
     }
 
+    /** Parses [args] into a filtered + paginated [ListQuery], or null when arguments are invalid. */
     private fun parseQuery(
         sender: CommandSender,
         args: Array<String?>,
@@ -218,6 +221,7 @@ class ListCommand : SubCommand {
         }
     }
 
+    /** Parses an optional page argument, defaulting to 1 when absent; sends an error when malformed. */
     private fun parseOptionalPage(sender: CommandSender, rawPage: String?): Int? {
         if (rawPage == null) return 1
         val page = rawPage.toIntOrNull()
@@ -228,10 +232,12 @@ class ListCommand : SubCommand {
         return page
     }
 
+    /** Returns displays whose world name matches [worldName] case-insensitively. */
     private fun filterByWorld(displays: List<DisplayData>, worldName: String): List<DisplayData> {
         return displays.filter { it.pos1.world?.name?.equals(worldName, ignoreCase = true) == true }
     }
 
+    /** Returns displays whose owner name or UUID matches [ownerName] case-insensitively. */
     private fun filterByOwner(
         displays: List<DisplayData>,
         ownerName: String,
@@ -243,10 +249,12 @@ class ListCommand : SubCommand {
         }
     }
 
+    /** Resolves the offline player name for [ownerId], caching the result for this invocation. */
     private fun getOwnerName(ownerId: UUID, ownerNameCache: MutableMap<UUID, String?>): String? {
         return ownerNameCache.getOrPut(ownerId) { Bukkit.getOfflinePlayer(ownerId).name }
     }
 
+    /** Returns all displays sorted by world, X, Y, Z and UUID for deterministic page order. */
     private fun sortedDisplays(): List<DisplayData> {
         return getDisplays()
             .sortedWith(
@@ -260,15 +268,19 @@ class ListCommand : SubCommand {
             )
     }
 
+    /** Returns the ceiling page count for [size] items at [PAGE_SIZE] per page (at least 1). */
     private fun pageCount(size: Int): Int = max(1, (size + PAGE_SIZE - 1) / PAGE_SIZE)
 
+    /** Returns page numbers `1..pageCount(size)` as strings for tab-completion. */
     private fun pageSuggestions(size: Int): List<String> = (1..pageCount(size)).map { it.toString() }
 
+    /** Sends the generic "wrong command" message and returns null so callers can short-circuit. */
     private fun wrong(sender: CommandSender): ListQuery? {
         sendMessage(sender, "displayWrongCommand")
         return null
     }
 
+    /** Replaces `{0}`, `{1}`, … placeholders in [template] with the matching value from [values]. */
     private fun applyPlaceholders(template: String, vararg values: String): String {
         var result = template
         values.forEachIndexed { index, value ->
@@ -277,10 +289,12 @@ class ListCommand : SubCommand {
         return result
     }
 
+    /** Returns the localized string for [key] in [sender]'s language, or [key] when missing. */
     private fun msg(sender: CommandSender, key: String): String {
         return Main.config.getMessageForPlayer(sender as? Player, key) as? String ?: key
     }
 
+    /** Returns the localized string for [key] after substituting positional [values]. */
     private fun msgf(sender: CommandSender, key: String, vararg values: String): String {
         return applyPlaceholders(msg(sender, key), *values)
     }

@@ -18,11 +18,14 @@ import java.time.Duration
  *
  * `Paper` implementation.
  */
-@NullMarked
-object GitHubFetcherUtil {
+@NullMarked object GitHubFetcherUtil {
     private val gson = Gson()
     private val client: HttpClient = newHttpClient()
 
+    /**
+     * Fetches the releases of `owner/repo` from GitHub. Returns an empty list on non-200
+     * responses (logged) but rethrows connection errors so callers can distinguish outages.
+     */
     @Throws(Exception::class)
     fun fetchReleases(owner: String, repo: String): List<Release> {
         val url = "https://api.github.com/repos/$owner/$repo/releases"

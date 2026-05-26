@@ -13,6 +13,7 @@ class DeleteCommand : SubCommand {
     override val permission = config.permissions.delete
     override val playerOnly = true
 
+    /** Deletes the display the player is currently looking at (within 32 blocks). */
     override fun execute(sender: CommandSender, args: Array<String?>) {
         val player = (sender as? Player) ?: return
 

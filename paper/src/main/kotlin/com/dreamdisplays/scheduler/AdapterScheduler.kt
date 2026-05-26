@@ -8,7 +8,7 @@ import org.jspecify.annotations.NullMarked
  *
  * `Paper` implementation.
  */
-@NullMarked
-interface AdapterScheduler {
+@NullMarked interface AdapterScheduler {
+    /** Schedules [task] to run repeatedly on an async thread with the given delay and interval (in ticks). */
     fun runRepeatingAsync(plugin: Plugin, delayTicks: Long, intervalTicks: Long, task: Runnable)
 }

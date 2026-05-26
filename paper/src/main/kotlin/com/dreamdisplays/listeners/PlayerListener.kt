@@ -22,14 +22,15 @@ import org.jspecify.annotations.NullMarked
  *
  * `Paper` implementation.
  */
-@NullMarked
 @Suppress("UNUSED")
-class PlayerListener : Listener {
-
+@NullMarked class PlayerListener : Listener {
     private var hasValidatedWorld = false
 
-    @EventHandler
-    fun onPlayerJoin(event: PlayerJoinEvent) {
+    /**
+     * On first join after startup, validates all stored displays once. Also schedules a delayed
+     * `modRequired` message for vanilla clients when mod detection is enabled.
+     */
+    @EventHandler fun onPlayerJoin(event: PlayerJoinEvent) {
         val player = event.player
 
         if (!hasValidatedWorld && getDisplays().isNotEmpty()) {
@@ -57,8 +58,8 @@ class PlayerListener : Listener {
         }
     }
 
-    @EventHandler
-    fun onPlayerLeave(event: PlayerQuitEvent) {
+    /** Drops cached per-player state when a player disconnects. */
+    @EventHandler fun onPlayerLeave(event: PlayerQuitEvent) {
         PlayerManager.removeVersion(event.player)
     }
 }

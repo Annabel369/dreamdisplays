@@ -16,6 +16,7 @@ class OnCommand : SubCommand {
     override val permission: String? = null
     override val playerOnly = false
 
+    /** Enables displays for the sender, or for another player when permitted. */
     override fun execute(sender: CommandSender, args: Array<String?>) {
         val target = resolveTarget(sender, args) ?: return
         val selfTarget = sender is Player && sender.uniqueId == target.uniqueId
@@ -41,12 +42,14 @@ class OnCommand : SubCommand {
         }
     }
 
+    /** Suggests online player names when [sender] is allowed to toggle others. */
     override fun complete(sender: CommandSender, args: Array<String?>): List<String> {
         if (args.size != 2) return emptyList()
         if (!sender.hasPermission(Main.config.permissions.toggleOthers)) return emptyList()
         return Bukkit.getOnlinePlayers().map { it.name }.sorted()
     }
 
+    /** Resolves the target player from [args], defaults to [sender] when no name was given. */
     private fun resolveTarget(sender: CommandSender, args: Array<String?>): Player? {
         if (args.size == 1) {
             return sender as? Player ?: run {
@@ -72,6 +75,7 @@ class OnCommand : SubCommand {
         return null
     }
 
+    /** Looks up the localized template for [key] and substitutes [values] via `String.format`. */
     private fun format(sender: CommandSender, key: String, vararg values: Any): String {
         val template = Main.config.getMessageForPlayer(sender as? Player, key) as? String ?: key
         return runCatching { String.format(template, *values) }.getOrElse { template }

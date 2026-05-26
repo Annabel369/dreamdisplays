@@ -6,7 +6,6 @@ package com.dreamdisplays.utils
  * `Paper` implementation.
  */
 object PlatformUtil {
-
     val isFolia: Boolean by lazy {
         runCatching {
             Class.forName("io.papermc.paper.threadedregions.RegionizedServer")

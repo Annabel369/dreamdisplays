@@ -22,8 +22,7 @@ import java.util.*
  *
  * `Paper` implementation.
  */
-@NullMarked
-object PacketUtil {
+@NullMarked object PacketUtil {
     private const val CHANNEL_DISPLAY_INFO = "dreamdisplays:display_info"
     private const val CHANNEL_SYNC = "dreamdisplays:sync"
     private const val CHANNEL_DELETE = "dreamdisplays:delete"
@@ -35,6 +34,7 @@ object PacketUtil {
 
     private val plugin: Main by lazy { Main.getInstance() }
 
+    /** Encodes and broadcasts a `display_info` packet describing a single display to [players]. */
     fun sendDisplayInfo(
         players: List<Player?>,
         id: UUID,
@@ -70,6 +70,7 @@ object PacketUtil {
         }
     }
 
+    /** Encodes and broadcasts a `sync` packet carrying the current playback state. */
     fun sendSync(players: List<Player?>, syncData: SyncData) {
         val id = syncData.id ?: return
 
@@ -88,6 +89,7 @@ object PacketUtil {
         }
     }
 
+    /** Tells [players] to remove the display with [id] from their local registry. */
     fun sendDelete(players: List<Player?>, id: UUID) {
         runCatching {
             val packet = buildPacket { output ->
@@ -100,22 +102,27 @@ object PacketUtil {
         }
     }
 
+    /** Notifies [player] whether they currently have premium permissions. */
     fun sendPremium(player: Player, isPremium: Boolean) {
         sendBooleanPacket(player, CHANNEL_PREMIUM, isPremium)
     }
 
+    /** Notifies [player] whether they are recognized as an admin (for delete privileges). */
     fun sendIsAdmin(player: Player, isAdmin: Boolean) {
         sendBooleanPacket(player, CHANNEL_IS_ADMIN, isAdmin)
     }
 
+    /** Pushes the global displays-enabled flag for [player] to the client. */
     fun sendDisplayEnabled(player: Player, isEnabled: Boolean) {
         sendBooleanPacket(player, CHANNEL_DISPLAY_ENABLED, isEnabled)
     }
 
+    /** Tells the client whether the report feature is enabled (i.e. a webhook is configured). */
     fun sendReportEnabled(player: Player, isEnabled: Boolean) {
         sendBooleanPacket(player, CHANNEL_REPORT_ENABLED, isEnabled)
     }
 
+    /** Tells [players] to evict the listed display UUIDs from any local caches. */
     fun sendClearCache(players: List<Player?>, displayUuids: List<UUID>) {
         if (displayUuids.isEmpty()) return
 
@@ -133,6 +140,7 @@ object PacketUtil {
         }
     }
 
+    /** Sends a one-byte boolean payload on [channel] to [player], swallowing IO errors with a warning. */
     private fun sendBooleanPacket(player: Player, channel: String, value: Boolean) {
         runCatching {
             val packet = buildPacket { output ->
@@ -144,6 +152,7 @@ object PacketUtil {
         }
     }
 
+    /** Allocates a buffer, runs [builder] against a [DataOutputStream] and returns the resulting bytes. */
     private fun buildPacket(builder: (DataOutputStream) -> Unit): ByteArray {
         return ByteArrayOutputStream().use { byteStream ->
             DataOutputStream(byteStream).use { output ->
@@ -153,6 +162,7 @@ object PacketUtil {
         }
     }
 
+    /** Sends an already-built [packet] on [channel] to every non-null player in [players]. */
     private fun sendPacket(players: List<Player?>, channel: String, packet: ByteArray) {
         players.filterNotNull().forEach { player ->
             player.sendPluginMessage(plugin, channel, packet)
@@ -160,11 +170,13 @@ object PacketUtil {
     }
 
     // Extension functions for DataOutputStream for writing
+    /** Writes a UUID as two big-endian longs. */
     private fun DataOutputStream.writeUUID(uuid: UUID) {
         writeLong(uuid.mostSignificantBits)
         writeLong(uuid.leastSignificantBits)
     }
 
+    /** Writes [value] in Minecraft's VarInt encoding (1–5 bytes). */
     private fun DataOutputStream.writeVarInt(value: Int) {
         var current = value
         while ((current and -0x80) != 0) {
@@ -174,6 +186,7 @@ object PacketUtil {
         writeByte(current and 0x7F)
     }
 
+    /** Writes [value] in Minecraft's VarLong encoding (1–10 bytes). */
     private fun DataOutputStream.writeVarLong(value: Long) {
         var current = value
         while (true) {
@@ -186,12 +199,14 @@ object PacketUtil {
         }
     }
 
+    /** Writes [text] as UTF-8 bytes prefixed by its byte length as a VarInt. */
     private fun DataOutputStream.writeString(text: String) {
         val bytes = text.toByteArray(StandardCharsets.UTF_8)
         writeVarInt(bytes.size)
         write(bytes)
     }
 
+    /** Maps a cardinal [BlockFace] to its wire byte; non-cardinal faces fall back to north. */
     private fun BlockFace.toPacketByte(): Byte = when (this) {
         BlockFace.NORTH -> 0
         BlockFace.EAST -> 1
@@ -200,11 +215,12 @@ object PacketUtil {
         else -> 0
     }
 
-    // Extension functions for DataInputStream for reading
+    /** Reads a UUID encoded as two big-endian longs by [writeUUID]. */
     fun DataInputStream.readUUID(): UUID {
         return UUID(readLong(), readLong())
     }
 
+    /** Decodes a VarInt; throws [IOException] if the encoding exceeds 5 bytes. */
     fun DataInputStream.readVarInt(): Int {
         var result = 0
         var shift = 0
@@ -221,13 +237,14 @@ object PacketUtil {
         return result
     }
 
+    /** Decodes a VarLong; throws if the encoding exceeds 10 bytes. */
     fun DataInputStream.readVarLong(): Long {
         var result = 0L
         var shift = 0
         var byte: Byte
 
         do {
-            if (shift >= 70) throw RuntimeException("[PacketUtil] VarLong too big")
+            if (shift >= 70) throw RuntimeException("[PacketUtil] VarLong too big.")
 
             byte = readByte()
             result = result or ((byte.toInt() and 0x7F).toLong() shl shift)

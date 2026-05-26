@@ -20,6 +20,8 @@ interface SubCommand {
     val name: String
     val permission: String?
     val playerOnly: Boolean get() = false
+    /** Runs the subcommand for [sender] with the parsed [args] array. */
     fun execute(sender: CommandSender, args: Array<String?>)
+    /** Returns tab-completion suggestions for [sender] given the current [args]. */
     fun complete(sender: CommandSender, args: Array<String?>): List<String> = emptyList()
 }

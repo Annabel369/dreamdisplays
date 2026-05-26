@@ -25,21 +25,22 @@ import java.util.UUID.randomUUID
  * @property playerId Unique identifier for the player.
  *
  */
-@NullMarked
-class SelectionData(player: Player) {
+@NullMarked class SelectionData(player: Player) {
     var pos1: Location? = null
     var pos2: Location? = null
     var isReady: Boolean = false
-
     private var face: BlockFace? = null
     private val playerId: UUID = player.uniqueId
 
+    /** Sets the facing direction of the future display. */
     fun setFace(face: BlockFace) {
         this.face = face
     }
 
+    /** Returns the stored facing direction, or [NORTH] if none was set. */
     fun getFace(): BlockFace = face ?: NORTH
 
+    /** Renders an outline of the current selection to the owning player. */
     fun drawBox() {
         val p1 = pos1 ?: return
         val p2 = pos2 ?: return
@@ -47,6 +48,11 @@ class SelectionData(player: Player) {
         showOutline(player, p1, p2)
     }
 
+    /**
+     * Builds a finalized [DisplayData] from the current selection.
+     *
+     * Throws if any corner or face is not yet set.
+     */
     fun generateDisplayData(): DisplayData {
         val p1 = requireNotNull(pos1) { "Position 1 is null" }
         val p2 = requireNotNull(pos2) { "Position 2 is null" }

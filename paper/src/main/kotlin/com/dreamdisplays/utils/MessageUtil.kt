@@ -14,17 +14,18 @@ import org.jspecify.annotations.NullMarked
  *
  * `Paper` implementation.
  */
-@NullMarked
-object MessageUtil {
+@NullMarked object MessageUtil {
     private val gson by lazy { Gson() }
     private val legacySerializer = LegacyComponentSerializer.legacyAmpersand()
     private val gsonSerializer = GsonComponentSerializer.gson()
 
+    /** Sends a localized message identified by [messageKey] to [sender], using their language when applicable. */
     fun sendMessage(sender: CommandSender?, messageKey: String) {
         val message = config.getMessageForPlayer(sender as? Player, messageKey)
         sendColoredMessage(sender, message)
     }
 
+    /** Sends [message] to [sender], auto-detecting Component / legacy string / JSON forms. */
     fun sendColoredMessage(sender: CommandSender?, message: Any?) {
         if (sender == null || message == null) return
         when (message) {
@@ -34,6 +35,7 @@ object MessageUtil {
         }
     }
 
+    /** Sends an already-built `Adventure` [component] to [sender], silently ignoring nulls. */
     fun sendComponent(sender: CommandSender?, component: Component?) {
         if (sender == null || component == null) return
         sender.sendMessage(component)

@@ -16,6 +16,7 @@ import java.util.*
 object SelectionManager {
     val selectionPoints = mutableMapOf<UUID, SelectionData>()
 
+    /** Records the first selection corner for [player] and resets stale state if the world changed. */
     fun setFirstPoint(player: Player, loc: Location, face: Any) {
         val sel = selectionPoints.getOrPut(player.uniqueId) { SelectionData(player) }
         if (sel.pos1?.world != loc.world || sel.pos2?.world != loc.world) sel.reset()
@@ -25,6 +26,7 @@ object SelectionManager {
         sendMessage(player, "firstPointSelected")
     }
 
+    /** Records the second selection corner, validating the worlds match the first point. */
     fun setSecondPoint(player: Player, loc: Location) {
         val sel = selectionPoints[player.uniqueId] ?: return
         if (sel.pos1 == null || sel.pos1?.world != loc.world) {
@@ -37,19 +39,23 @@ object SelectionManager {
         sendMessage(player, "secondPointSelected")
     }
 
+    /** Returns true if [loc] lies within any player's finalized selection. */
     fun isLocationSelected(loc: Location): Boolean =
         selectionPoints.values.any { it.isReady && it.contains(loc) }
 
+    /** Clears [player]'s current selection. */
     fun resetSelection(player: Player) {
         selectionPoints.remove(player.uniqueId)?.reset()
     }
 
+    /** Returns true if [loc] is inside the bounding box defined by this selection. */
     private fun SelectionData.contains(loc: Location): Boolean {
         val p1 = pos1 ?: return false
         val p2 = pos2 ?: return false
         return isInBoundaries(p1, p2, loc)
     }
 
+    /** Clears both corners and the ready flag of this selection in place. */
     private fun SelectionData.reset() {
         pos1 = null
         pos2 = null

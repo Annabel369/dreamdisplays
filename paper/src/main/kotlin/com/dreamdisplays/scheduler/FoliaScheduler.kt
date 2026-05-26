@@ -9,10 +9,8 @@ import java.lang.reflect.Proxy
  *
  * `Paper` implementation.
  */
-@NullMarked
-object FoliaScheduler : AdapterScheduler {
+@NullMarked object FoliaScheduler : AdapterScheduler {
     private const val TICK_MILLIS = 50L
-
     private val asyncScheduler = Class.forName("org.bukkit.Bukkit")
         .getMethod("getAsyncScheduler").invoke(null)
 
@@ -21,6 +19,10 @@ object FoliaScheduler : AdapterScheduler {
     private val timeUnitClass = Class.forName("java.util.concurrent.TimeUnit")
     private val milliseconds = timeUnitClass.getDeclaredField("MILLISECONDS").get(null)
 
+    /**
+     * Schedules a repeating async task via `Folia`'s async scheduler using reflection,
+     * so the plugin still compiles against vanilla `Paper` which lacks the API.
+     */
     override fun runRepeatingAsync(
         plugin: Plugin,
         delayTicks: Long,
