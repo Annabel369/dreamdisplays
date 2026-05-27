@@ -1,5 +1,7 @@
 package com.dreamdisplays.server.managers
 
+import com.dreamdisplays.server.Main
+import com.dreamdisplays.server.Server
 import com.dreamdisplays.server.datatypes.FabricSelectionData
 import com.dreamdisplays.server.datatypes.PaperSelectionData
 import com.dreamdisplays.server.datatypes.SelectionData
@@ -50,7 +52,10 @@ object SelectionManager {
         val sel = selectionPoints[player.uniqueId] as? PaperSelectionData ?: return
         if (sel.pos1 == null || sel.pos1?.world != loc.world) {
             sel.reset()
-            MessageUtil.sendMessage(player, "noDisplayTerritories")
+            MessageUtil.sendMessageWithMaterials(
+                player, "noDisplayTerritories",
+                Main.config.settings.selectionMaterial, Main.config.settings.baseMaterial
+            )
             return
         }
         sel.pos2 = loc.clone()
@@ -63,7 +68,10 @@ object SelectionManager {
         val sel = selectionPoints[player.uuid] as? FabricSelectionData ?: return
         if (sel.pos1 == null || sel.worldKey != worldKey) {
             sel.reset()
-            MessageUtil.sendMessage(player, "noDisplayTerritories")
+            MessageUtil.sendMessageWithMaterials(
+                player, "noDisplayTerritories",
+                Server.config.settings.selectionMaterial, Server.config.settings.baseMaterial
+            )
             return
         }
         sel.pos2 = pos

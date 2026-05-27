@@ -6,6 +6,7 @@ import com.dreamdisplays.server.Main
 import com.dreamdisplays.server.datatypes.PaperSelectionData
 import com.dreamdisplays.server.utils.MessageUtil
 import org.bukkit.entity.Player
+import org.bukkit.Material
 
 /**
  * Validates a player's block selection before a display is created. Checks facing depth, size
@@ -49,13 +50,16 @@ import org.bukkit.entity.Player
 
     /** Sends the localized validation-error message corresponding to [code]. */
     fun sendErrorMessage(player: Player, code: Int) {
+        if (code == 5) {
+            MessageUtil.sendMessageWithMaterials(player, "wrongStructure", Main.config.settings.baseMaterial)
+            return
+        }
         val key = when (code) {
             0 -> "secondPointNotSelected"
             1 -> "displayOverlap"
             2 -> "structureWrongDepth"
             3 -> "structureTooSmall"
             4 -> "structureTooLarge"
-            5 -> "wrongStructure"
             else -> return
         }
         MessageUtil.sendMessage(player, key)

@@ -39,9 +39,20 @@ import kotlin.math.abs
         val player = (sender as? Player) ?: return
 
         val sel = SelectionManager.selectionPoints[player.uniqueId] as? PaperSelectionData
-            ?: return MessageUtil.sendMessage(player, "noDisplayTerritories")
+            ?: return MessageUtil.sendMessageWithMaterials(
+                player, "noDisplayTerritories",
+                Main.config.settings.selectionMaterial, Main.config.settings.baseMaterial
+            )
 
-        validate(sel) { key -> MessageUtil.sendMessage(player, key) } ?: return
+        validate(sel,
+            sendError = { key ->
+                if (key == "noDisplayTerritories")
+                    MessageUtil.sendMessageWithMaterials(player, key, Main.config.settings.selectionMaterial, Main.config.settings.baseMaterial)
+                else
+                    MessageUtil.sendMessage(player, key)
+            },
+            onWrongStructure = { MessageUtil.sendMessageWithMaterials(player, "wrongStructure", Main.config.settings.baseMaterial) }
+        ) ?: return
 
         if (DisplayManager.isOverlaps(sel)) {
             MessageUtil.sendMessage(player, "displayOverlap")
@@ -59,7 +70,11 @@ import kotlin.math.abs
      * Validates the player's current selection, enforces overlap and Y-range limits, and
      * registers the resulting display.
      */
-    private fun validate(sel: PaperSelectionData, sendError: (String) -> Unit): PaperSelectionData? {
+    private fun validate(
+        sel: PaperSelectionData,
+        sendError: (String) -> Unit,
+        onWrongStructure: (() -> Unit)? = null,
+    ): PaperSelectionData? {
         val pos1 = sel.pos1
         val pos2 = sel.pos2
         if (!sel.isReady || pos1 == null || pos2 == null) {
@@ -111,6 +126,7 @@ import kotlin.math.abs
                 true
             },
             sendError = sendError,
+            onWrongStructure = onWrongStructure,
         )?.let { sel }
     }
 }
@@ -124,9 +140,20 @@ import kotlin.math.abs
             ?: return ctx.source.sendFailure(Component.literal("This command can only be used by a player.")).let { 0 }
 
         val sel = SelectionManager.selectionPoints[player.uuid] as? FabricSelectionData
-            ?: return MessageUtil.sendMessage(player, "noDisplayTerritories").let { 0 }
+            ?: return MessageUtil.sendMessageWithMaterials(
+                player, "noDisplayTerritories",
+                Server.config.settings.selectionMaterial, Server.config.settings.baseMaterial
+            ).let { 0 }
 
-        validate(sel, ctx.source.server) { key -> MessageUtil.sendMessage(player, key) } ?: return 0
+        validate(sel, ctx.source.server,
+            sendError = { key ->
+                if (key == "noDisplayTerritories")
+                    MessageUtil.sendMessageWithMaterials(player, key, Server.config.settings.selectionMaterial, Server.config.settings.baseMaterial)
+                else
+                    MessageUtil.sendMessage(player, key)
+            },
+            onWrongStructure = { MessageUtil.sendMessageWithMaterials(player, "wrongStructure", Server.config.settings.baseMaterial) }
+        ) ?: return 0
 
         if (DisplayManager.isOverlaps(sel)) {
             MessageUtil.sendMessage(player, "displayOverlap")
@@ -153,7 +180,8 @@ import kotlin.math.abs
     private fun validate(
         sel: FabricSelectionData,
         server: MinecraftServer,
-        sendError: (String) -> Unit
+        sendError: (String) -> Unit,
+        onWrongStructure: (() -> Unit)? = null,
     ): FabricSelectionData? {
         if (!sel.isReady || sel.pos1 == null || sel.pos2 == null) {
             sendError("noDisplayTerritories")
@@ -206,6 +234,7 @@ import kotlin.math.abs
                 true
             },
             sendError = sendError,
+            onWrongStructure = onWrongStructure,
         )?.let { sel }
     }
 }
@@ -226,6 +255,7 @@ private fun validateRegion(
     maxWidth: Int,
     hasExpectedBaseMaterial: () -> Boolean,
     sendError: (String) -> Unit,
+    onWrongStructure: (() -> Unit)? = null,
 ): Unit? {
     if (deltaX != faceModX && deltaZ != faceModZ) {
         sendError("structureWrongDepth")
@@ -248,7 +278,7 @@ private fun validateRegion(
         return null
     }
     if (!hasExpectedBaseMaterial()) {
-        sendError("wrongStructure")
+        onWrongStructure?.invoke() ?: sendError("wrongStructure")
         return null
     }
     return Unit
