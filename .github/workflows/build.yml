@@ -20,6 +20,9 @@ jobs:
       contents: write
     outputs:
       version: ${{ steps.get_version.outputs.version }}
+      is_dev: ${{ steps.get_version.outputs.is_dev }}
+      is_snapshot: ${{ steps.get_version.outputs.is_snapshot }}
+      is_release: ${{ steps.get_version.outputs.is_release }}
 
     steps:
       - name: Checkout repository
@@ -53,6 +56,19 @@ jobs:
         run: |
           VERSION=$(grep '^version=' gradle.properties | cut -d'=' -f2)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          if [[ "$VERSION" == *"-DEV"* ]]; then
+            echo "is_dev=true"      >> $GITHUB_OUTPUT
+            echo "is_snapshot=false" >> $GITHUB_OUTPUT
+            echo "is_release=false"  >> $GITHUB_OUTPUT
+          elif [[ "$VERSION" == *"-SNAPSHOT."* ]]; then
+            echo "is_dev=false"      >> $GITHUB_OUTPUT
+            echo "is_snapshot=true"  >> $GITHUB_OUTPUT
+            echo "is_release=false"  >> $GITHUB_OUTPUT
+          else
+            echo "is_dev=false"      >> $GITHUB_OUTPUT
+            echo "is_snapshot=false" >> $GITHUB_OUTPUT
+            echo "is_release=true"   >> $GITHUB_OUTPUT
+          fi
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -61,49 +77,11 @@ jobs:
           path: build/libs/*.jar
           if-no-files-found: warn
 
-  prerelease:
-    name: Pre-release
+  publish:
+    name: Publish
     runs-on: ubuntu-24.04
     needs: build
-    if: |
-      github.event_name == 'push' &&
-      (contains(needs.build.outputs.version, '-DEV') || contains(needs.build.outputs.version, '-SNAPSHOT.'))
-    permissions:
-      contents: write
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: build-jars
-          path: build/libs
-
-      - name: Publish pre-release
-        run: |
-          VERSION="${{ needs.build.outputs.version }}"
-          TAG="v${VERSION}"
-          if [[ "$VERSION" == *"-DEV"* ]]; then
-            gh release delete "$TAG" --yes 2>/dev/null || true
-            gh release create "$TAG" --title "$VERSION" --prerelease --notes "" build/libs/dreamdisplays-*.jar
-          else
-            gh release create "$TAG" --title "$VERSION" --prerelease build/libs/dreamdisplays-*.jar \
-            || gh release upload "$TAG" build/libs/dreamdisplays-*.jar --clobber
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  release:
-    name: Release
-    runs-on: ubuntu-24.04
-    needs: build
-    if: |
-      github.event_name == 'push' &&
-      !contains(needs.build.outputs.version, '-SNAPSHOT') &&
-      !contains(needs.build.outputs.version, '-DEV')
+    if: github.event_name == 'push'
     permissions:
       contents: write
 
@@ -125,7 +103,26 @@ jobs:
           echo "mc=$MC" >> $GITHUB_OUTPUT
           echo "mc_minor=${MC%.*}" >> $GITHUB_OUTPUT
 
+      - name: Publish dev pre-release
+        if: needs.build.outputs.is_dev == 'true'
+        run: |
+          TAG="v${{ needs.build.outputs.version }}"
+          gh release delete "$TAG" --yes 2>/dev/null || true
+          gh release create "$TAG" --title "${{ needs.build.outputs.version }}" --prerelease --notes "" build/libs/dreamdisplays-*.jar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish snapshot pre-release
+        if: needs.build.outputs.is_snapshot == 'true'
+        run: |
+          TAG="v${{ needs.build.outputs.version }}"
+          gh release create "$TAG" --title "${{ needs.build.outputs.version }}" --prerelease build/libs/dreamdisplays-*.jar \
+          || gh release upload "$TAG" build/libs/dreamdisplays-*.jar --clobber
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Extract changelog
+        if: needs.build.outputs.is_release == 'true'
         run: |
           python3 - <<'EOF'
           import re, sys
@@ -158,6 +155,7 @@ jobs:
           EOF
 
       - name: Publish Fabric
+        if: needs.build.outputs.is_release == 'true'
         uses: Kir-Antipov/mc-publish@v3.3
         with:
           name: '[Fabric ${{ steps.versions.outputs.mc }}] Dream Displays ${{ needs.build.outputs.version }}'
@@ -177,6 +175,7 @@ jobs:
             fabric-api(required){modrinth:P7dR8mSH}{curseforge:306612}
 
       - name: Publish NeoForge
+        if: needs.build.outputs.is_release == 'true'
         uses: Kir-Antipov/mc-publish@v3.3
         with:
           name: '[NeoForge ${{ steps.versions.outputs.mc }}] Dream Displays ${{ needs.build.outputs.version }}'
@@ -192,6 +191,7 @@ jobs:
           game-versions: ${{ steps.versions.outputs.mc }}
 
       - name: Publish Paper
+        if: needs.build.outputs.is_release == 'true'
         uses: Kir-Antipov/mc-publish@v3.3
         with:
           name: '[Paper ${{ steps.versions.outputs.mc_minor }}.x] Dream Displays ${{ needs.build.outputs.version }}'
@@ -210,6 +210,7 @@ jobs:
             ${{ steps.versions.outputs.mc }}
 
       - name: Create GitHub Release
+        if: needs.build.outputs.is_release == 'true'
         uses: Kir-Antipov/mc-publish@v3.3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
