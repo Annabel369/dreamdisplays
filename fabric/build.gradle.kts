@@ -5,7 +5,7 @@ plugins {
     kotlin("jvm") version libs.versions.kotlin
 }
 
-kotlin { jvmToolchain(25) }
+kotlin { jvmToolchain(providers.gradleProperty("java.version").get().toInt()) }
 
 sourceSets.main {
     kotlin.srcDir("../server/src/main/kotlin")
@@ -18,22 +18,22 @@ loom {
 dependencies {
     compileOnly(libs.ofratAnnotations)
     "kotlinCompilerPluginClasspath"(libs.ofratPlugin)
-    compileOnly("io.papermc.paper:paper-api:26.1.2.build.65-stable")
-    compileOnly("org.bstats:bstats-bukkit:3.2.1")
-    compileOnly("me.inotsleep:utils:1.4.10")
-    compileOnly("com.moandjiezana.toml:toml4j:0.7.2")
-    compileOnly("com.github.zafarkhaja:java-semver:0.10.2")
+    compileOnly(libs.paperApi)
+    compileOnly(libs.bstats)
+    compileOnly(libs.utils)
+    compileOnly(libs.toml4j)
+    compileOnly(libs.semver)
 
     minecraft(libs.fabricMinecraft)
     implementation(libs.fabricLoader)
     implementation(libs.fabricApi)
     shadow(project(":common"))
     shadow(libs.kotlinStdlib)
-    shadow("com.moandjiezana.toml:toml4j:0.7.2") {
+    shadow(libs.toml4j) {
         exclude(group = "com.google.code.gson", module = "gson")
     }
-    shadow("com.github.zafarkhaja:java-semver:0.10.2")
-    shadow("org.xerial:sqlite-jdbc:3.49.1.0")
+    shadow(libs.semver)
+    shadow(libs.sqliteJdbc)
 }
 
 tasks.processResources {
@@ -52,7 +52,7 @@ tasks.processResources {
 
 java {
     withSourcesJar()
-    toolchain { languageVersion.set(JavaLanguageVersion.of(25)) }
+    toolchain { languageVersion.set(JavaLanguageVersion.of(providers.gradleProperty("java.version").get().toInt())) }
 }
 
 tasks.withType<JavaCompile>().configureEach {

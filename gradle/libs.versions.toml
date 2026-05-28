@@ -5,12 +5,19 @@
 jspecify = "1.0.0"
 ofrat = "1.0.0"
 utils = "1.4.10"
+commonsCompress = "1.28.0"
+xz = "1.12"
+toml4j = "0.7.2"
+semver = "0.10.2"
+sqliteJdbc = "3.49.1.0"
+bstats = "3.2.1"
 
 # Plugin versions
 loom = "1.16.0-alpha.13"
 moddev = "2.0.141"
 shadow = "9.4.1"
 kotlin = "2.4.0-RC"
+paperweight = "2.0.0-beta.21"
 
 # Fabric
 fabricLoader = "0.19.2"
@@ -21,6 +28,9 @@ quiltLoader = "0.30.0-beta.7"
 # NeoForge
 neoforge = "26.1.2.59-beta"
 
+# Paper
+paperApi = "26.1.2.build.65-stable"
+
 [libraries]
 # Common
 jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
@@ -28,9 +38,18 @@ ofratAnnotations = { module = "com.github.arsmotorin.ofrat:ofrat-annotations", v
 ofratPlugin = { module = "com.github.arsmotorin.ofrat:ofrat-plugin", version.ref = "ofrat" }
 utils = { module = "me.inotsleep:utils", version.ref = "utils" }
 kotlinStdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
+commonsCompress = { module = "org.apache.commons:commons-compress", version.ref = "commonsCompress" }
+xz = { module = "org.tukaani:xz", version.ref = "xz" }
+toml4j = { module = "com.moandjiezana.toml:toml4j", version.ref = "toml4j" }
+semver = { module = "com.github.zafarkhaja:java-semver", version.ref = "semver" }
+sqliteJdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqliteJdbc" }
+bstats = { module = "org.bstats:bstats-bukkit", version.ref = "bstats" }
 
 # Fabric
 fabricLoader = { module = "net.fabricmc:fabric-loader", version.ref = "fabricLoader" }
 fabricApi = { module = "net.fabricmc.fabric-api:fabric-api", version.ref = "fabricApi" }
 fabricMinecraft = { module = "com.mojang:minecraft", version.ref = "fabricMinecraft" }
 quiltLoader = { module = "org.quiltmc:quilt-loader", version.ref = "quiltLoader" }
+
+# Paper
+paperApi = { module = "io.papermc.paper:paper-api", version.ref = "paperApi" }

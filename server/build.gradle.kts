@@ -2,7 +2,7 @@ plugins {
     java
     id("com.gradleup.shadow") version libs.versions.shadow
     kotlin("jvm")
-    id("io.papermc.paperweight.userdev") version "2.0.0-beta.21"
+    id("io.papermc.paperweight.userdev") version libs.versions.paperweight
 }
 
 dependencies {
@@ -17,31 +17,31 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
 }
 
 dependencies {
-    paperweight.devBundle("io.papermc.paper", "26.1.2.build.65-stable")
+    paperweight.devBundle("io.papermc.paper", libs.versions.paperApi.get())
     compileOnly(libs.jspecify)
     compileOnly(project(":common"))
     compileOnly(libs.fabricLoader)
     compileOnly(libs.fabricApi)
 
-    implementation("me.inotsleep:utils:1.4.10")
-    implementation("com.github.zafarkhaja:java-semver:0.10.2")
-    implementation("com.moandjiezana.toml:toml4j:0.7.2") {
+    implementation(libs.utils)
+    implementation(libs.semver)
+    implementation(libs.toml4j) {
         exclude(group = "com.google.code.gson", module = "gson")
     }
-    implementation(kotlin("stdlib-jdk8:2.4.0-RC"))
-    implementation("org.bstats:bstats-bukkit:3.2.1")
+    implementation(libs.kotlinStdlib)
+    implementation(libs.bstats)
 }
 
-val targetJavaVersion = 25
+val javaVersion = providers.gradleProperty("java.version").get().toInt()
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(targetJavaVersion))
+        languageVersion.set(JavaLanguageVersion.of(javaVersion))
     }
 }
 
 tasks.withType<JavaCompile>().configureEach {
     options.encoding = Charsets.UTF_8.name()
-    options.release.set(targetJavaVersion)
+    options.release.set(javaVersion)
 }
 
 tasks.processResources {

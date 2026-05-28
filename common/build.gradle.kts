@@ -6,8 +6,8 @@ plugins {
 dependencies {
     api(libs.utils)
     api(libs.jspecify)
-    api("org.apache.commons:commons-compress:1.28.0")
-    api("org.tukaani:xz:1.12")
+    api(libs.commonsCompress)
+    api(libs.xz)
     compileOnly(libs.kotlinStdlib)
 }
 
@@ -18,11 +18,11 @@ neoForge {
 }
 
 java {
-    toolchain { languageVersion.set(JavaLanguageVersion.of(25)) }
+    toolchain { languageVersion.set(JavaLanguageVersion.of(providers.gradleProperty("java.version").get().toInt())) }
 }
 
 kotlin {
-    jvmToolchain(25)
+    jvmToolchain(providers.gradleProperty("java.version").get().toInt())
     compilerOptions {
         freeCompilerArgs.addAll("-jvm-default=enable")
     }
