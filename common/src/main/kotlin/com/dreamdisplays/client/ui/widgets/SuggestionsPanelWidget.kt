@@ -469,7 +469,7 @@ class SuggestionsPanelWidget(
     override fun updateWidgetNarration(out: NarrationElementOutput) {}
 
     companion object {
-        private const val RESULT_LIMIT = 24
+        private const val RESULT_LIMIT = 72
         private const val HEADER_H = 14
         private const val CARD_GAP = 6
         private const val CARD_W = 152
