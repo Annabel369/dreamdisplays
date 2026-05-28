@@ -26,6 +26,10 @@ dependencies {
     implementation(libs.utils)
     implementation(libs.semver4j)
     implementation(libs.tomlj)
+    implementation(libs.exposedCore)
+    implementation(libs.exposedJdbc)
+    implementation(libs.hikari)
+    implementation(libs.sqliteJdbc)
     implementation(libs.kotlinStdlib)
     implementation(libs.bstats)
 }
@@ -76,6 +80,8 @@ tasks.shadowJar {
         "org.bstats",
         "org.tomlj",
         "org.semver4j",
+        "org.jetbrains.exposed",
+        "com.zaxxer.hikari",
     ).forEach { pack ->
         relocate(pack, "$prefix.$pack")
     }

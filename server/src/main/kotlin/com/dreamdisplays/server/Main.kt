@@ -73,7 +73,14 @@ import org.slf4j.LoggerFactory
 
         Scheduler.init(this)
 
-        storage = StorageManager(this)
+        val s = Companion.config.storage
+        storage = StorageManager(
+            type = s.type, dataDir = dataFolder, tablePrefix = s.tablePrefix,
+            host = s.host, port = s.port, database = s.database,
+            username = s.username, password = s.password,
+        )
+        storage.createSchema()
+        DisplayManager.register(storage.loadAllPaperDisplays())
 
         ListenerRegistrar.registerListeners(this)
         ChannelRegistrar.registerChannels(this)
@@ -85,7 +92,8 @@ import org.slf4j.LoggerFactory
     /** Persists state and tears down resources. Safe to call from a reload. */
     fun doDisable() {
         LoggingManager.log("[Dream Displays] Disabling Dream Displays ${pluginMeta.version}...")
-        storage.onDisable()
+        DisplayManager.save { storage.saveDisplay(it) }
+        storage.disconnect()
     }
 
     companion object {
@@ -131,14 +139,23 @@ import org.slf4j.LoggerFactory
 
         ServerLifecycleEvents.SERVER_STARTED.register { server ->
             serverInstance = server
-            storageInstance = StorageManager(configInstance)
+            val s = configInstance.storage
+            storageInstance = StorageManager(
+                type = s.type, dataDir = FabricLoader.getInstance().configDir.resolve("dreamdisplays").toFile(),
+                tablePrefix = s.tablePrefix,
+                host = s.host, port = s.port, database = s.database,
+                username = s.username, password = s.password,
+            )
+            storageInstance!!.createSchema()
+            DisplayManager.register(storageInstance!!.loadAllFabricDisplays())
             logger.info("[Dream Displays] Server started. Storage connected.")
             startRepeatingTasks(server)
         }
 
         ServerLifecycleEvents.SERVER_STOPPING.register { _ ->
             logger.info("[Dream Displays] Server stopping. Saving displays...")
-            storageInstance?.onDisable(Unit)
+            DisplayManager.save { storageInstance?.saveDisplay(it) }
+            storageInstance?.disconnect()
         }
 
         logger.info("[Dream Displays] Server-side initialization complete.")

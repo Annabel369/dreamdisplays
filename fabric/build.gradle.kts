@@ -23,6 +23,9 @@ dependencies {
     compileOnly(libs.utils)
     compileOnly(libs.tomlj)
     compileOnly(libs.semver4j)
+    compileOnly(libs.exposedCore)
+    compileOnly(libs.exposedJdbc)
+    compileOnly(libs.hikari)
 
     minecraft(libs.fabricMinecraft)
     implementation(libs.fabricLoader)
@@ -32,6 +35,9 @@ dependencies {
     shadow(libs.tomlj)
     shadow(libs.semver4j)
     shadow(libs.sqliteJdbc)
+    shadow(libs.exposedCore)
+    shadow(libs.exposedJdbc)
+    shadow(libs.hikari)
 }
 
 tasks.processResources {
@@ -86,6 +92,9 @@ tasks.shadowJar {
         include(dependency("org.jetbrains:annotations"))
         include(dependency("org.tomlj:tomlj"))
         include(dependency("org.semver4j:semver4j"))
+        include(dependency("org.jetbrains.exposed:exposed-core"))
+        include(dependency("org.jetbrains.exposed:exposed-jdbc"))
+        include(dependency("com.zaxxer:HikariCP"))
     }
     val prefix = "com.dreamdisplays.libs"
     listOf(
@@ -97,6 +106,8 @@ tasks.shadowJar {
         "org.intellij.lang.annotations",
         "org.tomlj",
         "org.semver4j",
+        "org.jetbrains.exposed",
+        "com.zaxxer.hikari",
     ).forEach { pack ->
         relocate(pack, "$prefix.$pack")
     }

@@ -5,7 +5,6 @@ import com.google.gson.reflect.TypeToken
 import org.tomlj.Toml
 import org.tomlj.TomlTable
 import me.inotsleep.utils.logging.LoggingManager
-import me.inotsleep.utils.storage.StorageSettings
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.server.level.ServerPlayer
 import io.github.arsmotorin.ofrat.*
@@ -234,16 +233,14 @@ import java.nio.file.StandardCopyOption
     // Storage configuration
     data class StorageSection(
         val storage: StorageConfig = StorageConfig(),
-    ) : StorageSettings() {
-        init {
-            this.host = storage.host
-            this.port = storage.port
-            this.database = storage.database
-            this.password = storage.password
-            this.username = storage.username
-            this.options = "autoReconnect=true&useSSL=false;"
-            this.tablePrefix = storage.table_prefix
-        }
+    ) {
+        val type get() = storage.type
+        val host get() = storage.host
+        val port get() = storage.port
+        val database get() = storage.database
+        val password get() = storage.password
+        val username get() = storage.username
+        val tablePrefix get() = storage.table_prefix
 
         data class StorageConfig(
             val type: String = "SQLITE",
