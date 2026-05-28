@@ -18,7 +18,6 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: write
-      packages: write
     outputs:
       version: ${{ steps.get_version.outputs.version }}
 
@@ -66,7 +65,10 @@ jobs:
     name: Publish
     runs-on: ubuntu-24.04
     needs: build
-    if: github.event_name == 'push'
+    # -DEV = build only; SNAPSHOT.N and releases = publish
+    if: |
+      github.event_name == 'push' &&
+      (contains(needs.build.outputs.version, '-SNAPSHOT.') || !contains(needs.build.outputs.version, '-DEV') && !contains(needs.build.outputs.version, '-SNAPSHOT'))
     permissions:
       contents: write
 
@@ -81,29 +83,31 @@ jobs:
           name: build-jars
           path: build/libs
 
-      # Snapshot versions
-      # Remove creation of pre-release if releasing snapshot
+      - name: Extract versions
+        id: versions
+        run: |
+          MC=$(grep 'fabricMinecraft\s*=' gradle/libs.versions.toml | head -1 | cut -d'"' -f2)
+          echo "mc=$MC" >> $GITHUB_OUTPUT
+          echo "mc_minor=${MC%.*}" >> $GITHUB_OUTPUT
+          if [[ "${{ needs.build.outputs.version }}" == *"-SNAPSHOT"* ]]; then
+            echo "version_type=alpha" >> $GITHUB_OUTPUT
+          else
+            echo "version_type=release" >> $GITHUB_OUTPUT
+          fi
+
       - name: Create pre-release
-        if: contains(needs.build.outputs.version, '-SNAPSHOT')
+        if: contains(needs.build.outputs.version, '-SNAPSHOT.')
         run: |
           VERSION=${{ needs.build.outputs.version }}
           TAG="v${VERSION}"
-
-          gh release create "$TAG" \
-            --title "$VERSION" \
-            --prerelease \
-            build/libs/dreamdisplays-*.jar \
+          gh release create "$TAG" --title "$VERSION" --prerelease build/libs/dreamdisplays-*.jar \
           || gh release upload "$TAG" build/libs/dreamdisplays-*.jar --clobber
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Beta versions
-      - name: Extract changelogs
-        # Remove if snapshot
-        if: "!contains(needs.build.outputs.version, '-SNAPSHOT')"
+      - name: Extract changelog
         id: changelog
         run: |
-          VERSION=${{ needs.build.outputs.version }}
           python3 - <<'EOF'
           import re, sys
 
@@ -126,11 +130,8 @@ jobs:
               lines.append(f"## {header.strip()}")
               for item in body.splitlines():
                   item = item.strip()
-                  if not item:
-                      continue
-                  # Strip checkbox: - [x] / - [ ]
-                  item = re.sub(r"^- \[[x ]\]\s*", "- ", item)
-                  lines.append(item)
+                  if item:
+                      lines.append(item)
               lines.append("")
 
           with open("changelog.md", "w") as f:
@@ -138,95 +139,64 @@ jobs:
           EOF
 
       - name: Publish Fabric
-        # Remove if snapshot
-        if: "!contains(needs.build.outputs.version, '-SNAPSHOT')"
         uses: Kir-Antipov/mc-publish@v3.3
         with:
-          name: '[Fabric 26.1.2] Dream Displays ${{ needs.build.outputs.version }}'
+          name: '[Fabric ${{ steps.versions.outputs.mc }}] Dream Displays ${{ needs.build.outputs.version }}'
           version: fabric-${{ needs.build.outputs.version }}
-          version-type: alpha
-
+          version-type: ${{ steps.versions.outputs.version_type }}
           files: build/libs/dreamdisplays-fabric-*.jar
-
           changelog-file: changelog.md
-
           modrinth-id: dreamdisplays
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
-
           curseforge-id: ${{ secrets.CURSEFORGE_PROJECT_ID }}
           curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
-
           loaders: |
             fabric
             quilt
-          game-versions: |
-            26.1.2
-
+          game-versions: ${{ steps.versions.outputs.mc }}
           dependencies: |
             fabric-api(required){modrinth:P7dR8mSH}{curseforge:306612}
 
       - name: Publish NeoForge
-        # Remove if snapshot
-        if: "!contains(needs.build.outputs.version, '-SNAPSHOT')"
         uses: Kir-Antipov/mc-publish@v3.3
         with:
-          name: '[NeoForge 26.1.2] Dream Displays ${{ needs.build.outputs.version }}'
+          name: '[NeoForge ${{ steps.versions.outputs.mc }}] Dream Displays ${{ needs.build.outputs.version }}'
           version: neoforge-${{ needs.build.outputs.version }}
-          version-type: alpha
-
+          version-type: ${{ steps.versions.outputs.version_type }}
           files: build/libs/dreamdisplays-neoforge-*.jar
-
           changelog-file: changelog.md
-
           modrinth-id: dreamdisplays
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
-
           curseforge-id: ${{ secrets.CURSEFORGE_PROJECT_ID }}
           curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
-
           loaders: neoforge
-          game-versions: |
-            26.1.2
+          game-versions: ${{ steps.versions.outputs.mc }}
 
       - name: Publish Paper
-        # Remove if snapshot
-        if: "!contains(needs.build.outputs.version, '-SNAPSHOT')"
         uses: Kir-Antipov/mc-publish@v3.3
         with:
-          name: '[Paper 26.x] Dream Displays ${{ needs.build.outputs.version }}'
+          name: '[Paper ${{ steps.versions.outputs.mc_minor }}.x] Dream Displays ${{ needs.build.outputs.version }}'
           version: paper-${{ needs.build.outputs.version }}
-          version-type: alpha
-
+          version-type: ${{ steps.versions.outputs.version_type }}
           files: build/libs/dreamdisplays-paper-*.jar
-
           changelog-file: changelog.md
-
           modrinth-id: dreamdisplays
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
-
           loaders: |
             folia
             paper
             purpur
-
           game-versions: |
-            26.1
-            26.1.1
-            26.1.2
+            ${{ steps.versions.outputs.mc_minor }}
+            ${{ steps.versions.outputs.mc }}
 
       - name: Create GitHub Release
-        # Remove if snapshot
         if: "!contains(needs.build.outputs.version, '-SNAPSHOT')"
         uses: Kir-Antipov/mc-publish@v3.3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           github-tag: v${{ needs.build.outputs.version }}
-          # Add if snapshot
-          # github-prerelease: ${{ contains(needs.build.outputs.version, '-SNAPSHOT') }}
-
           github-generate-changelog: false
           github-draft: false
-
           files: build/libs/dreamdisplays-*.jar
-
           changelog-file: changelog.md

@@ -186,7 +186,8 @@ import java.util.*
         if (PlayerManager.hasBeenNotifiedAboutPluginUpdate(player)) return
 
         val currentVersionString = plugin.description.version
-        if (currentVersionString.contains("-SNAPSHOT", ignoreCase = true)) {
+        if (currentVersionString.contains("-SNAPSHOT", ignoreCase = true) ||
+            currentVersionString.contains("-DEV", ignoreCase = true)) {
             return
         }
 

@@ -10,6 +10,14 @@ your help makes the project better for everyone.
 3. **Test your changes thoroughly** to ensure they work as intended and don't break existing features
 4. **Submit a Pull request** describing your changes clearly and linking any relevant issues
 
+### Version policy
+
+| Version example    | GitHub               | Modrinth / CurseForge | Notes                                  |
+|--------------------|----------------------|-----------------------|----------------------------------------|
+| `1.7.0-DEV`        | Build artifacts only | —                     | Work-in-progress; nothing published    |
+| `1.7.0-SNAPSHOT.1` | Pre-release          | Alpha channel         | Numbered snapshots are public previews |
+| `1.7.0`            | Release              | Alpha channel         | Stable release                         |
+
 ### Tips
 
 - Keep commits focused and write them ~[as that](https://www.conventionalcommits.org/en/v1.0.0/)

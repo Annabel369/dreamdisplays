@@ -8,7 +8,7 @@ import java.net.HttpURLConnection
 import java.net.URI
 import java.nio.charset.StandardCharsets
 
-/** Checks mod updates. **/
+/** Checks mod updates against the latest stable GitHub release. **/
 object UpdateCheck {
     private const val API = "https://api.github.com/repos/arsmotorin/dreamdisplays/releases/latest"
 
@@ -16,21 +16,30 @@ object UpdateCheck {
     @Volatile private var updateAvailable = false
     @Volatile private var latestVersion: String? = null
 
-    /** Returns true if a newer release was detected; triggers the background check on the first call. */
+    /** Returns true if a newer stable release exists; skipped entirely for DEV / SNAPSHOT builds. */
     fun isUpdateAvailable(): Boolean {
+        if (isPreRelease(GeneralUtil.getModVersion())) return false
         if (!checked) startCheck()
         return updateAvailable
     }
 
-    /** Returns true if the latest version differs from the installed version (used to show the update arrow in UI). */
+    /**
+     * Returns true if the UI update arrow should be shown.
+     * Suppressed on DEV / SNAPSHOT builds and when the current version is already newer than the latest stable.
+     */
     fun shouldShowArrow(): Boolean {
+        if (isPreRelease(GeneralUtil.getModVersion())) return false
         if (!checked) startCheck()
         val latest = latestVersion ?: return false
-        return !latest.equals(GeneralUtil.getModVersion(), ignoreCase = true)
+        return compareVersions(latest, GeneralUtil.getModVersion()) > 0
     }
 
-    /** Returns the latest release version string, or the installed version if the check has not completed yet. */
+    /** Returns the latest stable release version string, or the installed version if the check hasn't completed. */
     fun latestVersion(): String = latestVersion ?: GeneralUtil.getModVersion()
+
+    /** Returns true if [version] is a DEV or SNAPSHOT build. */
+    fun isPreRelease(version: String): Boolean =
+        version.contains("-DEV", ignoreCase = true) || version.contains("-SNAPSHOT", ignoreCase = true)
 
     /** Starts the background update check exactly once; subsequent calls are no-ops. */
     @Synchronized private fun startCheck() {
@@ -39,7 +48,7 @@ object UpdateCheck {
         Thread(::doCheck, "dreamdisplays-update-check").apply { isDaemon = true }.start()
     }
 
-    /** Queries the GitHub releases API and sets [latestVersion] and [updateAvailable] based on the response. */
+    /** Queries the GitHub releases API and sets [latestVersion] and [updateAvailable]. */
     private fun doCheck() {
         var conn: HttpURLConnection? = null
         try {
@@ -60,15 +69,13 @@ object UpdateCheck {
                     val obj = root.asJsonObject
                     optString(obj, "tag_name") ?: optString(obj, "name")
                 }
-
                 root.isJsonArray -> {
                     val arr = root.asJsonArray
                     if (!arr.isEmpty && arr[0].isJsonObject) optString(arr[0].asJsonObject, "tag_name") else null
                 }
-
                 else -> null
             } ?: return
-            val tag = if (rawTag.startsWith("v") || rawTag.startsWith("V")) rawTag.substring(1) else rawTag
+            val tag = rawTag.trimStart('v', 'V')
             latestVersion = tag
             if (compareVersions(tag, GeneralUtil.getModVersion()) > 0) {
                 updateAvailable = true
@@ -86,16 +93,59 @@ object UpdateCheck {
         return runCatching { obj.get(key).asString }.getOrNull()
     }
 
-    /** Compares two dot-separated version strings; returns positive if [a] is newer than [b]. */
-    private fun compareVersions(a: String, b: String): Int = runCatching {
-        val aa = a.split('.', '-', '+')
-        val bb = b.split('.', '-', '+')
-        aa.zip(bb).firstNotNullOfOrNull { (x, y) ->
-            if (x == y) return@firstNotNullOfOrNull null
-            val ai = x.toIntOrNull()
-            val bi = y.toIntOrNull()
-            val cmp = if (ai != null && bi != null) ai.compareTo(bi) else x.compareTo(y)
-            cmp.takeIf { it != 0 }
-        } ?: aa.size.compareTo(bb.size)
+    /**
+     * Compares two version strings following semver pre-release rules:
+     * - Base versions (major.minor.patch) are compared numerically.
+     * - A release is always newer than a pre-release with the same base (e.g., 1.7.0 > 1.7.0-SNAPSHOT.1).
+     * - Returns positive if [a] is newer than [b].
+     */
+    internal fun compareVersions(a: String, b: String): Int = runCatching {
+        val (aBase, aPre) = splitVersion(a)
+        val (bBase, bPre) = splitVersion(b)
+
+        val baseCmp = compareBase(aBase, bBase)
+        if (baseCmp != 0) return baseCmp
+
+        // Same base: release -> pre-release
+        return when {
+            aPre == null && bPre == null -> 0
+            aPre == null -> 1 // a is release, b is pre-release
+            bPre == null -> -1 // a is pre-release, b is release
+            else -> comparePreRelease(aPre, bPre)
+        }
     }.getOrElse { a.compareTo(b) }
+
+    /** Splits "1.7.0-SNAPSHOT.1" into ("1.7.0", "SNAPSHOT.1"), or ("1.7.0", null) for a plain release. */
+    private fun splitVersion(v: String): Pair<String, String?> {
+        val hyphen = v.indexOf('-')
+        return if (hyphen < 0) v to null else v.substring(0, hyphen) to v.substring(hyphen + 1)
+    }
+
+    private fun compareBase(a: String, b: String): Int {
+        val aa = a.split('.').map { it.toIntOrNull() ?: 0 }
+        val bb = b.split('.').map { it.toIntOrNull() ?: 0 }
+        val maxLen = maxOf(aa.size, bb.size)
+        for (i in 0 until maxLen) {
+            val cmp = (aa.getOrElse(i) { 0 }).compareTo(bb.getOrElse(i) { 0 })
+            if (cmp != 0) return cmp
+        }
+        return 0
+    }
+
+    /** Compares pre-release identifiers dot-by-dot; numeric identifiers compared numerically. */
+    private fun comparePreRelease(a: String, b: String): Int {
+        val aa = a.split('.')
+        val bb = b.split('.')
+        val maxLen = maxOf(aa.size, bb.size)
+        for (i in 0 until maxLen) {
+            val x = aa.getOrElse(i) { return -1 }
+            val y = bb.getOrElse(i) { return 1 }
+            if (x == y) continue
+            val xi = x.toIntOrNull()
+            val yi = y.toIntOrNull()
+            val cmp = if (xi != null && yi != null) xi.compareTo(yi) else x.compareTo(y)
+            if (cmp != 0) return cmp
+        }
+        return 0
+    }
 }
