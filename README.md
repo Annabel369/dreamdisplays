@@ -2,14 +2,14 @@
 [![License](https://img.shields.io/github/license/arsmotorin/dreamdisplays)](https://github.com/arsmotorin/dreamdisplays/blob/master/LICENSE)
 [![Discord](http://img.shields.io/discord/1456716690879676501?label=Discord&style=flat&logo=discord)](https://discord.gg/uwMMZ2KWk6)
 
-<div align="center">
+<div align="left">
   <img src="https://i.imgur.com/EquheHU.png" alt="Dream Displays"> 
   <div>
     <a href="https://modrinth.com/plugin/dreamdisplays">Modrinth</a>
     <span> | </span>
     <a href="https://www.curseforge.com/minecraft/mc-mods/dreamdisplays">CurseForge</a>
     <span> | </span>
-    <a href="https://github.com/arsmotorin/display">GitHub</a>
+    <a href="https://github.com/arsmotorin/dreamdisplays">GitHub</a>
     <span> | </span>
     <a href="https://discord.com/invite/uwMMZ2KWk6">Discord</a>
   </div>
