@@ -16,7 +16,7 @@ import com.dreamdisplays.server.registrar.ListenerRegistrar
 import com.dreamdisplays.server.registrar.SchedulerRegistrar
 import com.dreamdisplays.server.utils.net.ServerPacketHandler
 import io.github.arsmotorin.ofrat.*
-import com.github.zafarkhaja.semver.Version
+import org.semver4j.Semver
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
 import me.inotsleep.utils.logging.LoggingManager
 import net.fabricmc.api.ModInitializer
@@ -90,7 +90,7 @@ import org.slf4j.LoggerFactory
 
     companion object {
         lateinit var config: Config
-        var modVersion: Version? = null
+        var modVersion: Semver? = null
         var pluginLatestVersion: String? = null
 
         /** Returns the singleton plugin instance. */
@@ -213,7 +213,7 @@ import org.slf4j.LoggerFactory
         }
 
         /** Latest mod version from GitHub (populated by updater). */
-        @Volatile var modLatestVersion: Version? = null
+        @Volatile var modLatestVersion: Semver? = null
 
         /** Latest plugin version string from GitHub (populated by updater). */
         @Volatile var pluginLatestVersion: String? = null

@@ -7,6 +7,7 @@ dependencies {
     api(libs.utils)
     api(libs.jspecify)
     api(libs.commonsCompress)
+    api(libs.semver4j)
     compileOnly(libs.kotlinStdlib)
 }
 

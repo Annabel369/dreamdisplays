@@ -1,6 +1,6 @@
 package com.dreamdisplays.server.managers
 
-import com.github.zafarkhaja.semver.Version
+import org.semver4j.Semver
 import io.github.arsmotorin.ofrat.*
 import net.minecraft.server.level.ServerPlayer
 import org.bukkit.entity.Player
@@ -13,19 +13,19 @@ import java.util.concurrent.ConcurrentHashMap
  * displays are enabled for each connected player.
  */
 @NullMarked object PlayerManager {
-    private val versions: MutableMap<UUID, Version?> = ConcurrentHashMap()
+    private val versions: MutableMap<UUID, Semver?> = ConcurrentHashMap()
     private val modUpdateNotified: MutableMap<UUID, Boolean> = ConcurrentHashMap()
     private val pluginUpdateNotified: MutableMap<UUID, Boolean> = ConcurrentHashMap()
     private val modRequiredNotified: MutableMap<UUID, Boolean> = ConcurrentHashMap()
     private val displaysEnabled: MutableMap<UUID, Boolean> = ConcurrentHashMap()
 
     /** Records the mod [version] reported by [player] for compatibility checks. */
-    @PaperOnly @JvmStatic fun setVersion(player: Player, version: Version?) {
+    @PaperOnly @JvmStatic fun setVersion(player: Player, version: Semver?) {
         versions[player.uniqueId] = version
     }
 
     /** Records the mod [version] reported by [player] for compatibility checks. */
-    @FabricOnly fun setVersion(player: ServerPlayer, version: Version?) {
+    @FabricOnly fun setVersion(player: ServerPlayer, version: Semver?) {
         versions[player.uuid] = version
     }
 
@@ -50,17 +50,17 @@ import java.util.concurrent.ConcurrentHashMap
     }
 
     /** Returns a defensive copy of the per-player version map. */
-    @JvmStatic fun getVersions(): Map<UUID, Version?> {
+    @JvmStatic fun getVersions(): Map<UUID, Semver?> {
         return HashMap(versions)
     }
 
     /** Returns the mod version reported by [player], or null if none was reported. */
-    @PaperOnly @JvmStatic fun getVersion(player: Player): Version? {
+    @PaperOnly @JvmStatic fun getVersion(player: Player): Semver? {
         return versions[player.uniqueId]
     }
 
     /** Returns the mod version reported by [player], or null if none was reported. */
-    @FabricOnly fun getVersion(player: ServerPlayer): Version? = versions[player.uuid]
+    @FabricOnly fun getVersion(player: ServerPlayer): Semver? = versions[player.uuid]
 
     /** Returns true if [player] has already been informed about a mod update. */
     @PaperOnly @JvmStatic fun hasBeenNotifiedAboutModUpdate(player: Player): Boolean {

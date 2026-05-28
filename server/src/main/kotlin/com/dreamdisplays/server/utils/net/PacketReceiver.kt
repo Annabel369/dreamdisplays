@@ -12,7 +12,7 @@ import com.dreamdisplays.server.meta.Scheduler
 import com.dreamdisplays.server.utils.MessageUtil
 import com.dreamdisplays.server.utils.YouTubeUtil
 import io.github.arsmotorin.ofrat.*
-import com.github.zafarkhaja.semver.Version
+import org.semver4j.Semver
 import com.google.gson.Gson
 import me.inotsleep.utils.logging.LoggingManager.*
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking
@@ -169,7 +169,7 @@ import java.util.*
     }
 
     /** Tells [player] about a newer mod version if they haven't been notified this session. */
-    private fun checkModUpdate(player: Player, userVersion: Version) {
+    private fun checkModUpdate(player: Player, userVersion: Semver) {
         val latestVersion = Main.modVersion ?: return
 
         if (userVersion < latestVersion && !PlayerManager.hasBeenNotifiedAboutModUpdate(player)) {
@@ -191,8 +191,8 @@ import java.util.*
             return
         }
 
-        val currentVersion = runCatching { Version.parse(currentVersionString) }.getOrNull() ?: return
-        val latestVersion = runCatching { Version.parse(latestPluginVersion) }.getOrNull() ?: return
+        val currentVersion = Semver.coerce(currentVersionString) ?: return
+        val latestVersion = Semver.coerce(latestPluginVersion) ?: return
 
         if (currentVersion < latestVersion) {
             sendPluginUpdateMessage(player, latestPluginVersion)
@@ -201,7 +201,7 @@ import java.util.*
     }
 
     /** Sends the localized `newVersion` message to [player], handling both plain and JSON templates. */
-    private fun sendModUpdateMessage(player: Player, version: Version) {
+    private fun sendModUpdateMessage(player: Player, version: Semver) {
         val message = when (val rawMessage = Main.config.getMessageForPlayer(player, "newVersion")) {
             is String -> String.format(rawMessage, version.toString())
             else -> {
@@ -346,10 +346,10 @@ import java.util.*
         }
     }
 
-    /** Sanitizes [raw] and parses it as a [Version], returning null if the result is not a valid SemVer. */
-    private fun parseVersionOrNull(raw: String): Version? {
+    /** Sanitizes [raw] and coerces it into a [Semver], returning null if parsing fails. */
+    private fun parseVersionOrNull(raw: String): Semver? {
         val sanitized = YouTubeUtil.sanitize(raw)?.takeIf { it.isNotEmpty() } ?: return null
-        return runCatching { Version.parse(sanitized) }.getOrNull()
+        return Semver.coerce(sanitized)
     }
 
     /** Reads a 128-bit UUID using the shared encoding in [PacketUtil]. */
@@ -426,8 +426,8 @@ import java.util.*
                     if (latestPlugin != null && currentVersion != null &&
                         !currentVersion.contains("-SNAPSHOT", ignoreCase = true)
                     ) {
-                        val cur = runCatching { Version.parse(currentVersion) }.getOrNull()
-                        val lat = runCatching { Version.parse(latestPlugin) }.getOrNull()
+                        val cur = Semver.coerce(currentVersion)
+                        val lat = Semver.coerce(latestPlugin)
                         if (cur != null && lat != null && cur < lat) {
                             val msg = config.getMessageForPlayer(player, "newPluginVersion") as? String
                             if (msg != null) {
@@ -548,10 +548,10 @@ import java.util.*
         }
     }
 
-    /** Parses a version string, returning `null` if parsing fails. */
-    private fun parseVersionOrNull(raw: String): Version? {
+    /** Sanitizes [raw] and coerces it into a [Semver], returning null if parsing fails. */
+    private fun parseVersionOrNull(raw: String): Semver? {
         val sanitized = YouTubeUtil.sanitize(raw)?.takeIf { it.isNotEmpty() } ?: return null
-        return runCatching { Version.parse(sanitized) }.getOrNull()
+        return Semver.coerce(sanitized)
     }
 
     /** Checks if [player] has operator level 2 permissions, which is the threshold for all privileged actions. */

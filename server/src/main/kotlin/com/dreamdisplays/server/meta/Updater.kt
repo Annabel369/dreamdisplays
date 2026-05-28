@@ -7,7 +7,7 @@ import com.dreamdisplays.server.Main.Companion.modVersion
 import com.dreamdisplays.server.Main.Companion.pluginLatestVersion
 import com.dreamdisplays.server.Server
 import com.dreamdisplays.server.utils.GitHubFetcherUtil
-import com.github.zafarkhaja.semver.Version
+import org.semver4j.Semver
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import com.google.gson.reflect.TypeToken
@@ -21,13 +21,10 @@ import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Duration
-import java.util.regex.Pattern
-
 /**
  * Checks for updates of the `Paper` plugin and mod from GitHub releases.
  */
 @PaperOnly object Updater {
-    private val tailPattern = Pattern.compile("\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?")
 
     /**
      * Fetches GitHub releases and stores the latest mod and plugin versions in `Main`.
@@ -42,10 +39,9 @@ import java.util.regex.Pattern
                 return
             }
 
-            modVersion = releases
-                .mapNotNull { parseVersion(it.tagName) }
-                .filter { !it.toString().contains("-SNAPSHOT") }
-                .maxOrNull()
+            val stableVersions = releases.mapNotNull { parseVersion(it.tagName) }
+
+            modVersion = stableVersions.maxOrNull()
 
             pluginLatestVersion = releases
                 .filter {
@@ -53,7 +49,6 @@ import java.util.regex.Pattern
                             it.tagName.contains("plugin", ignoreCase = true)
                 }
                 .mapNotNull { parseVersion(it.tagName)?.toString() }
-                .filter { !it.contains("-SNAPSHOT") }
                 .maxOrNull() ?: modVersion?.toString()
 
         } catch (_: UnknownHostException) {
@@ -67,12 +62,9 @@ import java.util.regex.Pattern
         }
     }
 
-    /** Extracts a `SemVer` string from an arbitrary GitHub release tag, returning null if none found. */
-    private fun parseVersion(tag: String): Version? {
-        val matcher = tailPattern.matcher(tag)
-        return if (matcher.find()) runCatching { Version.parse(matcher.group()) }.getOrNull()
-        else null
-    }
+    /** Extracts a stable semver from a GitHub release tag; returns null for snapshots and unparseable tags. */
+    private fun parseVersion(tag: String): Semver? =
+        Semver.coerce(tag)?.takeIf { it.isStable() }
 }
 
 /**
@@ -82,7 +74,6 @@ import java.util.regex.Pattern
     private val logger = LoggerFactory.getLogger("DreamDisplays/Updater")
     private val gson = Gson()
     private val client: HttpClient = HttpClient.newHttpClient()
-    private val tailPattern = Pattern.compile("\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?")
 
     /**
      * Fetches GitHub releases and stores the latest mod and plugin versions in `Main`.
@@ -96,10 +87,9 @@ import java.util.regex.Pattern
                 return
             }
 
-            Server.modLatestVersion = releases
-                .mapNotNull { parseVersion(it.tagName) }
-                .filter { !it.toString().contains("-SNAPSHOT") }
-                .maxOrNull()
+            val stableVersions = releases.mapNotNull { parseVersion(it.tagName) }
+
+            Server.modLatestVersion = stableVersions.maxOrNull()
 
             Server.pluginLatestVersion = releases
                 .filter {
@@ -107,7 +97,6 @@ import java.util.regex.Pattern
                             it.tagName.contains("plugin", ignoreCase = true)
                 }
                 .mapNotNull { parseVersion(it.tagName)?.toString() }
-                .filter { !it.contains("-SNAPSHOT") }
                 .maxOrNull() ?: Server.modLatestVersion?.toString()
 
         } catch (_: UnknownHostException) {
@@ -140,12 +129,9 @@ import java.util.regex.Pattern
         ) ?: emptyList()
     }
 
-    /** Extracts a `SemVer` string from an arbitrary GitHub release tag, returning null if none found. */
-    private fun parseVersion(tag: String): Version? {
-        val matcher = tailPattern.matcher(tag)
-        return if (matcher.find()) runCatching { Version.parse(matcher.group()) }.getOrNull()
-        else null
-    }
+    /** Extracts a stable semver from a GitHub release tag; returns null for snapshots and unparseable tags. */
+    private fun parseVersion(tag: String): Semver? =
+        Semver.coerce(tag)?.takeIf { it.isStable() }
 
     data class Release(
         @field:SerializedName("tag_name") val tagName: String,

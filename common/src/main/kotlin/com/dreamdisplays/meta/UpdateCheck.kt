@@ -4,6 +4,7 @@ import com.dreamdisplays.utils.GeneralUtil
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import me.inotsleep.utils.logging.LoggingManager
+import org.semver4j.Semver
 import java.net.HttpURLConnection
 import java.net.URI
 import java.nio.charset.StandardCharsets
@@ -93,59 +94,10 @@ object UpdateCheck {
         return runCatching { obj.get(key).asString }.getOrNull()
     }
 
-    /**
-     * Compares two version strings following semver pre-release rules:
-     * - Base versions (major.minor.patch) are compared numerically.
-     * - A release is always newer than a pre-release with the same base (e.g., 1.7.0 > 1.7.0-SNAPSHOT.1).
-     * - Returns positive if [a] is newer than [b].
-     */
-    internal fun compareVersions(a: String, b: String): Int = runCatching {
-        val (aBase, aPre) = splitVersion(a)
-        val (bBase, bPre) = splitVersion(b)
-
-        val baseCmp = compareBase(aBase, bBase)
-        if (baseCmp != 0) return baseCmp
-
-        // Same base: release -> pre-release
-        return when {
-            aPre == null && bPre == null -> 0
-            aPre == null -> 1 // a is release, b is pre-release
-            bPre == null -> -1 // a is pre-release, b is release
-            else -> comparePreRelease(aPre, bPre)
-        }
-    }.getOrElse { a.compareTo(b) }
-
-    /** Splits "1.7.0-SNAPSHOT.1" into ("1.7.0", "SNAPSHOT.1"), or ("1.7.0", null) for a plain release. */
-    private fun splitVersion(v: String): Pair<String, String?> {
-        val hyphen = v.indexOf('-')
-        return if (hyphen < 0) v to null else v.substring(0, hyphen) to v.substring(hyphen + 1)
-    }
-
-    private fun compareBase(a: String, b: String): Int {
-        val aa = a.split('.').map { it.toIntOrNull() ?: 0 }
-        val bb = b.split('.').map { it.toIntOrNull() ?: 0 }
-        val maxLen = maxOf(aa.size, bb.size)
-        for (i in 0 until maxLen) {
-            val cmp = (aa.getOrElse(i) { 0 }).compareTo(bb.getOrElse(i) { 0 })
-            if (cmp != 0) return cmp
-        }
-        return 0
-    }
-
-    /** Compares pre-release identifiers dot-by-dot; numeric identifiers compared numerically. */
-    private fun comparePreRelease(a: String, b: String): Int {
-        val aa = a.split('.')
-        val bb = b.split('.')
-        val maxLen = maxOf(aa.size, bb.size)
-        for (i in 0 until maxLen) {
-            val x = aa.getOrElse(i) { return -1 }
-            val y = bb.getOrElse(i) { return 1 }
-            if (x == y) continue
-            val xi = x.toIntOrNull()
-            val yi = y.toIntOrNull()
-            val cmp = if (xi != null && yi != null) xi.compareTo(yi) else x.compareTo(y)
-            if (cmp != 0) return cmp
-        }
-        return 0
+    /** Compares two version strings using semver rules. Returns positive if [a] is newer than [b]. */
+    internal fun compareVersions(a: String, b: String): Int {
+        val av = Semver.coerce(a) ?: return a.compareTo(b)
+        val bv = Semver.coerce(b) ?: return a.compareTo(b)
+        return av.compareTo(bv)
     }
 }

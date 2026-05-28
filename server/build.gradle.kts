@@ -24,7 +24,7 @@ dependencies {
     compileOnly(libs.fabricApi)
 
     implementation(libs.utils)
-    implementation(libs.semver)
+    implementation(libs.semver4j)
     implementation(libs.tomlj)
     implementation(libs.kotlinStdlib)
     implementation(libs.bstats)
@@ -75,7 +75,7 @@ tasks.shadowJar {
         "me.inotsleep.utils",
         "org.bstats",
         "org.tomlj",
-        "com.github.zafarkhaja.semver",
+        "org.semver4j",
     ).forEach { pack ->
         relocate(pack, "$prefix.$pack")
     }

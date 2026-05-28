@@ -22,7 +22,7 @@ dependencies {
     compileOnly(libs.bstats)
     compileOnly(libs.utils)
     compileOnly(libs.tomlj)
-    compileOnly(libs.semver)
+    compileOnly(libs.semver4j)
 
     minecraft(libs.fabricMinecraft)
     implementation(libs.fabricLoader)
@@ -30,7 +30,7 @@ dependencies {
     shadow(project(":common"))
     shadow(libs.kotlinStdlib)
     shadow(libs.tomlj)
-    shadow(libs.semver)
+    shadow(libs.semver4j)
     shadow(libs.sqliteJdbc)
 }
 
@@ -85,7 +85,7 @@ tasks.shadowJar {
         include(dependency("org.jetbrains.kotlin:kotlin-stdlib"))
         include(dependency("org.jetbrains:annotations"))
         include(dependency("org.tomlj:tomlj"))
-        include(dependency("com.github.zafarkhaja:java-semver"))
+        include(dependency("org.semver4j:semver4j"))
     }
     val prefix = "com.dreamdisplays.libs"
     listOf(
@@ -96,7 +96,7 @@ tasks.shadowJar {
         "org.jetbrains.annotations",
         "org.intellij.lang.annotations",
         "org.tomlj",
-        "com.github.zafarkhaja.semver",
+        "org.semver4j",
     ).forEach { pack ->
         relocate(pack, "$prefix.$pack")
     }
