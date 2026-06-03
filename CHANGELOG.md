@@ -1,3 +1,32 @@
+# Version 1.7.1
+
+## Client
+
+### Feature
+
+- A bit fresher mod icon
+
+### Improvements
+
+- Better version publishing on Modrinth
+- Reduce JAR size by ~50%
+
+### Fixes
+
+- Fabric config parsing error
+- NeoForge `set_locked` packet error
+
+## Server
+
+### Improvements
+
+- Some code refactoring
+- Reduce JAR size by ~50%
+
+### Fixes
+
+- `FabricDisplayData` error when server shutdowns
+
 # Version 1.7.0
 
 ## Client
