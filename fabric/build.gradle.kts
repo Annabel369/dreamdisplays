@@ -91,6 +91,7 @@ tasks.shadowJar {
         include(dependency("org.jetbrains.kotlin:kotlin-stdlib"))
         include(dependency("org.jetbrains:annotations"))
         include(dependency("org.tomlj:tomlj"))
+        include(dependency("org.antlr:antlr4-runtime"))
         include(dependency("org.semver4j:semver4j"))
         include(dependency("org.jetbrains.exposed:exposed-core"))
         include(dependency("org.jetbrains.exposed:exposed-jdbc"))
@@ -105,6 +106,7 @@ tasks.shadowJar {
         "org.jetbrains.annotations",
         "org.intellij.lang.annotations",
         "org.tomlj",
+        "org.antlr",
         "org.semver4j",
         "org.jetbrains.exposed",
         "com.zaxxer.hikari",
