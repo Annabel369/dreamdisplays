@@ -74,6 +74,12 @@ tasks.shadowJar {
             "paperweight-mappings-namespace" to "mojang",
         )
     }
+    dependencies {
+        exclude(dependency("org.jetbrains.kotlin:kotlin-reflect"))
+        exclude(dependency("org.jetbrains.kotlinx:kotlinx-coroutines-core"))
+        exclude(dependency("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm"))
+        exclude(dependency("org.checkerframework:checker-qual"))
+    }
     val prefix = "com.dreamdisplays.libs"
     listOf(
         "me.inotsleep.utils",
@@ -86,4 +92,20 @@ tasks.shadowJar {
         relocate(pack, "$prefix.$pack")
     }
     mergeServiceFiles()
+    exclude("META-INF/versions/9/module-info.class")
+    exclude("META-INF/maven/**")
+    exclude("META-INF/proguard/**")
+    exclude("META-INF/*.kotlin_module")
+    exclude("org/sqlite/native/Linux-Android/**")
+    exclude("org/sqlite/native/Linux-Musl/x86/**")
+    // exclude("org/sqlite/native/FreeBSD/**")
+    exclude("org/sqlite/native/Linux/ppc64/**")
+    exclude("org/sqlite/native/Linux/riscv64/**")
+    exclude("org/sqlite/native/Linux/arm/**")
+    exclude("org/sqlite/native/Linux/armv6/**")
+    exclude("org/sqlite/native/Linux/armv7/**")
+    exclude("org/sqlite/native/Linux/x86/**")
+    exclude("org/sqlite/native/Windows/x86/**")
+    exclude("org/sqlite/native/Windows/armv7/**")
+    exclude("org/sqlite/native/Windows/aarch64/**")
 }
