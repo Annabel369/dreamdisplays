@@ -99,9 +99,31 @@ jobs:
       - name: Extract versions
         id: versions
         run: |
-          MC=$(grep 'fabricMinecraft\s*=' gradle/libs.versions.toml | head -1 | cut -d'"' -f2)
-          echo "mc=$MC" >> $GITHUB_OUTPUT
-          echo "mc_minor=${MC%.*}" >> $GITHUB_OUTPUT
+          python3 - <<'EOF'
+          import os, re
+
+          with open("gradle/libs.versions.toml") as f:
+              content = f.read()
+
+          mc = re.search(r'fabricMinecraft\s*=\s*"([^"]+)"', content).group(1)
+          parts = mc.split(".")
+          base = f"{parts[0]}.{parts[1]}"
+          patch = int(parts[2]) if len(parts) > 2 else 0
+
+          mc_range = [base] + [f"{base}.{p}" for p in range(1, patch + 1)]
+          paper_1_21 = ["1.21"] + [f"1.21.{p}" for p in range(1, 12)]
+
+          out = os.environ["GITHUB_OUTPUT"]
+          with open(out, "a") as f:
+              f.write(f"mc={mc}\n")
+              f.write(f"mc_minor={base}\n")
+              f.write("mc_versions<<VERSIONS_EOF\n")
+              f.write("\n".join(mc_range) + "\n")
+              f.write("VERSIONS_EOF\n")
+              f.write("paper_versions<<VERSIONS_EOF\n")
+              f.write("\n".join(paper_1_21 + mc_range) + "\n")
+              f.write("VERSIONS_EOF\n")
+          EOF
 
       - name: Publish dev pre-release
         if: needs.build.outputs.is_dev == 'true'
@@ -170,7 +192,7 @@ jobs:
           loaders: |
             fabric
             quilt
-          game-versions: ${{ steps.versions.outputs.mc }}
+          game-versions: ${{ steps.versions.outputs.mc_versions }}
           dependencies: |
             fabric-api(required){modrinth:P7dR8mSH}{curseforge:306612}
 
@@ -188,7 +210,7 @@ jobs:
           curseforge-id: ${{ secrets.CURSEFORGE_PROJECT_ID }}
           curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
           loaders: neoforge
-          game-versions: ${{ steps.versions.outputs.mc }}
+          game-versions: ${{ steps.versions.outputs.mc_versions }}
 
       - name: Publish Paper
         if: needs.build.outputs.is_release == 'true'
@@ -205,9 +227,7 @@ jobs:
             folia
             paper
             purpur
-          game-versions: |
-            ${{ steps.versions.outputs.mc_minor }}
-            ${{ steps.versions.outputs.mc }}
+          game-versions: ${{ steps.versions.outputs.paper_versions }}
 
       - name: Create GitHub Release
         if: needs.build.outputs.is_release == 'true'
