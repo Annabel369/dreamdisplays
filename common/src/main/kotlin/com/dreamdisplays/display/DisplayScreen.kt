@@ -8,6 +8,7 @@ import com.dreamdisplays.client.ui.PipOverlayManager
 import com.dreamdisplays.client.ui.VideoPopoutWindow
 import com.dreamdisplays.player.MediaPlayer
 import com.dreamdisplays.net.Packets
+import com.dreamdisplays.utils.MinecraftScreenUtil
 import com.dreamdisplays.ytdlp.YtDlp
 import net.minecraft.client.Minecraft
 import net.minecraft.client.renderer.RenderPipelines
@@ -51,6 +52,7 @@ class DisplayScreen(
     var renderType: RenderType? = null
     var textureWidth: Int = 0
     var textureHeight: Int = 0
+    @Volatile var videoContentAspect: Double = 0.0
 
     var volume: Float = savedSettings.volume
         set(value) {
@@ -445,7 +447,7 @@ class DisplayScreen(
             }
         }
 
-        val screen = mc.screen
+        val screen = MinecraftScreenUtil.currentScreen(mc)
         if (screen is DisplayMenu && screen.displayScreen === this) screen.onClose()
     }
 
@@ -538,7 +540,6 @@ class DisplayScreen(
             "dream-displays",
             RenderSetup.builder(RenderPipelines.SOLID_BLOCK)
                 .withTexture("Sampler0", id)
-                .bufferSize(RenderType.BIG_BUFFER_SIZE)
                 .affectsCrumbling()
                 .useLightmap()
                 .createRenderSetup()

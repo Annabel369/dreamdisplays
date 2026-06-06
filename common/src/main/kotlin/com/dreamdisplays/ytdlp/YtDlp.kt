@@ -122,6 +122,10 @@ object YtDlp {
         val cached = FORMAT_CACHE[videoUrl]
         val now = System.currentTimeMillis()
         if (cached != null && (now - cached.createdAtMs) <= CACHE_TTL_MS) return
+        FormatDiskCache.load(videoUrl, CACHE_TTL_MS)?.takeIf { it.isNotEmpty() }?.let { fromDisk ->
+            FORMAT_CACHE[videoUrl] = CacheEntry(fromDisk.toList(), System.currentTimeMillis())
+            return
+        }
         startFetchInternal(videoUrl)
     }
 
@@ -244,6 +248,8 @@ object YtDlp {
             args.add("--proxy")
             args.add(proxy)
         }
+        if (cookiesDisabledByConfig()) return null
+
         val cookieFile = BUNDLED_DIR.resolve("cookies.txt")
         if (!Files.exists(cookieFile) && !cookiesUnavailableThisSession) ensureCookieFileMaterialized(cookieFile)
         if (Files.exists(cookieFile)) {
@@ -273,6 +279,11 @@ object YtDlp {
             }
         }
         return null
+    }
+
+    private fun cookiesDisabledByConfig(): Boolean {
+        val configured = Initializer.config.ytdlpCookiesFromBrowser.trim().lowercase(Locale.ENGLISH)
+        return configured == "none" || configured == "off" || configured == "disabled" || configured.isEmpty()
     }
 
     /**
@@ -395,6 +406,7 @@ object YtDlp {
 
         cmd.addAll(
             listOf(
+                "--force-ipv4",
                 "-J", "--no-playlist", "--no-warnings", "--no-check-formats",
                 "--ignore-config", "--no-mark-watched",
                 "--extractor-retries", "0",
@@ -423,7 +435,7 @@ object YtDlp {
                     -1L
                 }
                 val alive = process.isAlive
-                process.destroyForcibly()
+                destroyProcessTree(process)
                 stdoutReader.join(2_000)
                 stderrReader.join(2_000)
                 logger.warn(
@@ -525,12 +537,12 @@ object YtDlp {
         }.apply { isDaemon = true; start() }
         try {
             if (!p.waitFor(15, TimeUnit.SECONDS)) {
-                p.destroyForcibly()
+                destroyProcessTree(p)
                 cookiesUnavailableThisSession = true
                 throw IOException("Cookie export timed out.")
             }
         } catch (e: InterruptedException) {
-            p.destroyForcibly()
+            destroyProcessTree(p)
             Thread.currentThread().interrupt()
             throw IOException("Interrupted", e)
         }
@@ -591,8 +603,11 @@ object YtDlp {
 
             val mime = (if (hasVideo) "video/" else "audio/") + (ext ?: "webm")
 
+            val width = optInt(f, "width")
+            val height = optInt(f, "height")
+
             val resolution: String? = if (hasVideo) {
-                val h = optInt(f)
+                val h = height
                 if (h != null && h > 0) "${h}p"
                 else extractResolution(optString(f, "resolution"), optString(f, "format_note"), optString(f, "format"))
             } else null
@@ -605,6 +620,7 @@ object YtDlp {
             result.add(
                 YtStream(
                     url, mime, container, protocol, resolution,
+                    width, height,
                     language, formatNote, vcodec, acodec, fps, tbr,
                     hasVideo, hasAudio, live, seekable, durationNanos
                 )
@@ -664,11 +680,11 @@ object YtDlp {
         }
     }
 
-    /** Reads the `height` field from [obj] as an int, returning null if absent or not parseable. */
-    private fun optInt(obj: JsonObject): Int? {
-        if (!obj.has("height") || obj.get("height").isJsonNull) return null
+    /** Reads an int field from [obj], returning null if absent or not parseable. */
+    private fun optInt(obj: JsonObject, key: String): Int? {
+        if (!obj.has(key) || obj.get(key).isJsonNull) return null
         return try {
-            obj.get("height").asInt
+            obj.get(key).asInt
         } catch (_: Exception) {
             null
         }
@@ -804,11 +820,15 @@ object YtDlp {
                 p.outputStream.close()
             } catch (_: IOException) {
             }
-            p.inputStream.use { it.readAllBytes() }
+            val drainer = Thread {
+                try { p.inputStream.use { it.readAllBytes() } } catch (_: Exception) {}
+            }.apply { isDaemon = true; start() }
             if (!p.waitFor(10, TimeUnit.SECONDS)) {
-                p.destroyForcibly()
+                destroyProcessTree(p)
+                try { drainer.join(500) } catch (_: InterruptedException) {}
                 return false
             }
+            try { drainer.join(500) } catch (_: InterruptedException) {}
             if (!Files.exists(testCookieFile)) {
                 return p.exitValue() == 0
             }
@@ -818,6 +838,15 @@ object YtDlp {
         } catch (_: Exception) {
             false
         }
+    }
+
+    private fun destroyProcessTree(process: Process) {
+        runCatching {
+            process.toHandle().descendants()
+                .sorted(Comparator.comparingLong<ProcessHandle> { it.pid() }.reversed())
+                .forEach { it.destroyForcibly() }
+        }
+        process.destroyForcibly()
     }
 
     /** Returns the expected filename of the bundled binary for the current OS (e.g. `yt-dlp.exe` on Windows). */

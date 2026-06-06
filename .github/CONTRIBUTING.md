@@ -28,3 +28,11 @@ your help makes the project better for everyone.
 - Respect our guidelines
 
 Thank you for helping make Dream Displays better!
+
+### Useful links
+- Fabric: https://fabricmc.net/develop/
+- Fabric Loom: https://maven.fabricmc.net/fabric-loom/fabric-loom.gradle.plugin/
+- NeoForge Moddev: https://plugins.gradle.org/plugin/net.neoforged.moddev
+- NeoForge Client: https://neoforged.net/
+- Quilt: https://github.com/QuiltMC/quilt-loader/tags
+- Paper: https://jd.papermc.io/paper/26.1.2/
