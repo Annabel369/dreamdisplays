@@ -8,6 +8,7 @@ import com.dreamdisplays.display.DisplaySettings
 import com.dreamdisplays.meta.UpdateCheck
 import com.dreamdisplays.net.Packets
 import com.dreamdisplays.utils.GeneralUtil
+import com.dreamdisplays.utils.MinecraftScreenUtil
 import com.dreamdisplays.ytdlp.*
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
@@ -1069,7 +1070,7 @@ class DisplayMenu private constructor() : Screen(Component.translatable("dreamdi
         fun open(displayScreen: DisplayScreen) {
             val s = DisplayMenu()
             s.displayScreen = displayScreen
-            Minecraft.getInstance().setScreen(s)
+            MinecraftScreenUtil.setScreen(Minecraft.getInstance(), s)
         }
 
         private fun hovered(mx: Int, my: Int, w: AbstractWidget): Boolean =

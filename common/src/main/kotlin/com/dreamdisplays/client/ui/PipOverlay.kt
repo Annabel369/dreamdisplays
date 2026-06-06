@@ -81,7 +81,7 @@ class PipOverlay(
     private var dynamicTexture: DynamicTexture? = null
     private var textureId: Identifier? = null
     private var texW = 0; private var texH = 0
-    private val uploader = AsyncTextureUploader(stateCache = true)
+    private var uploader: AsyncTextureUploader? = null
 
     var anchor: PipAnchor = PipAnchor.fromCorner(initialCorner)
     private var sizeFraction: Float = 0.25f
@@ -165,7 +165,8 @@ class PipOverlay(
 
         val gpuTex = tex.getTexture()
         if (!gpuTex.isClosed && gpuTex is GlTexture) {
-            uploader.upload(gpuTex.glId(), buf, fw, fh)
+            val textureUploader = uploader ?: AsyncTextureUploader(stateCache = true).also { uploader = it }
+            textureUploader.upload(gpuTex.glId(), buf, fw, fh)
         }
         uploadedVersion = v
     }
@@ -387,7 +388,8 @@ class PipOverlay(
     fun startClose() { closing = true }
 
     fun cleanup(mc: Minecraft) {
-        try { uploader.cleanup() } catch (_: Exception) {}
+        try { uploader?.cleanup() } catch (_: Exception) {}
+        uploader = null
         val id = textureId ?: return
         textureId = null
         try { mc.textureManager.release(id) } catch (_: Exception) {}

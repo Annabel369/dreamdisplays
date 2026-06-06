@@ -12,8 +12,18 @@ import kotlin.math.sin
 
 /** Renders screens in the world. */
 object ScreenRenderer {
+    private typealias QuadAppender = (PoseStack.Pose, VertexConsumer) -> Unit
+    private typealias QuadRenderer = (RenderType, QuadAppender) -> Unit
+
     /** Iterates all registered screens and renders each one relative to [camera]. */
     fun render(stack: PoseStack, camera: Camera) {
+        render(stack, camera) { type, appendVertices ->
+            drawImmediate(stack, type, appendVertices)
+        }
+    }
+
+    /** Iterates all registered screens and lets the caller submit quads through the active renderer. */
+    fun render(stack: PoseStack, camera: Camera, drawQuad: QuadRenderer) {
         val cameraPos = camera.position()
         for (displayScreen in DisplayManager.getScreens()) {
             if (displayScreen.texture == null) continue
@@ -25,15 +35,14 @@ object ScreenRenderer {
             val relativePos = screenCenter.subtract(cameraPos)
             stack.translate(relativePos.x, relativePos.y, relativePos.z)
 
-            val tessellator = Tesselator.getInstance()
-            renderScreenTexture(displayScreen, stack, tessellator)
+            renderScreenTexture(displayScreen, stack, drawQuad)
 
             stack.popPose()
         }
     }
 
     /** Translates and rotates the pose for [displayScreen]'s facing direction, then renders the video or fallback color. */
-    private fun renderScreenTexture(displayScreen: DisplayScreen, stack: PoseStack, tessellator: Tesselator) {
+    private fun renderScreenTexture(displayScreen: DisplayScreen, stack: PoseStack, drawQuad: QuadRenderer) {
         // Upload the latest decoded frame to the GPU texture (if a new one is ready).
         // Done here on the render thread instead of via mc.execute() per frame.
         displayScreen.fitTexture()
@@ -62,14 +71,14 @@ object ScreenRenderer {
         stack.scale(displayScreen.width.toFloat(), displayScreen.height.toFloat(), 0f)
 
         if (displayScreen.isVideoStarted && displayScreen.texture != null && displayScreen.renderType != null) {
-            renderGpuTexture(stack, tessellator, displayScreen.renderType!!, displayScreen.brightness)
+            renderGpuTexture(drawQuad, displayScreen.renderType!!, displayScreen.brightness)
         } else if (displayScreen.renderType != null) {
             if (displayScreen.errored) {
-                renderColor(stack, tessellator, displayScreen.renderType!!, 35, 5, 5)
+                renderColor(drawQuad, displayScreen.renderType!!, 35, 5, 5)
             } else {
                 val pulse = abs(sin(System.nanoTime() / 1_500_000_000.0 * Math.PI)).toFloat()
                 val v = (10 + pulse * 20).toInt()
-                renderColor(stack, tessellator, displayScreen.renderType!!, v, v, v)
+                renderColor(drawQuad, displayScreen.renderType!!, v, v, v)
             }
         }
         stack.popPose()
@@ -116,33 +125,37 @@ object ScreenRenderer {
     }
 
     /** Draws a unit quad using the screen's GPU texture, with vertex color scaled by [brightness]. */
-    private fun renderGpuTexture(stack: PoseStack, tesselator: Tesselator, type: RenderType, brightness: Float) {
-        val pose = stack.last().pose()
+    private fun renderGpuTexture(drawQuad: QuadRenderer, type: RenderType, brightness: Float) {
         val c = (brightness.coerceIn(0f, 1f) * 255f + 0.5f).toInt()
-        val builder: BufferBuilder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.BLOCK)
-
-        builder.addVertex(pose, 0f, 0f, 0f).setColor(c, c, c, 255).setUv(0f, 1f).setLight(0xF000F0).setNormal(0f, 0f, 1f)
-        builder.addVertex(pose, 1f, 0f, 0f).setColor(c, c, c, 255).setUv(1f, 1f).setLight(0xF000F0).setNormal(0f, 0f, 1f)
-        builder.addVertex(pose, 1f, 1f, 0f).setColor(c, c, c, 255).setUv(1f, 0f).setLight(0xF000F0).setNormal(0f, 0f, 1f)
-        builder.addVertex(pose, 0f, 1f, 0f).setColor(c, c, c, 255).setUv(0f, 0f).setLight(0xF000F0).setNormal(0f, 0f, 1f)
-
-        type.draw(builder.buildOrThrow())
+        drawQuad(type) { pose, builder ->
+            builder.addVertex(pose, 0f, 0f, 0f).setColor(c, c, c, 255).setUv(0f, 1f).setLight(0xF000F0)
+                .setNormal(0f, 0f, 1f)
+            builder.addVertex(pose, 1f, 0f, 0f).setColor(c, c, c, 255).setUv(1f, 1f).setLight(0xF000F0)
+                .setNormal(0f, 0f, 1f)
+            builder.addVertex(pose, 1f, 1f, 0f).setColor(c, c, c, 255).setUv(1f, 0f).setLight(0xF000F0)
+                .setNormal(0f, 0f, 1f)
+            builder.addVertex(pose, 0f, 1f, 0f).setColor(c, c, c, 255).setUv(0f, 0f).setLight(0xF000F0)
+                .setNormal(0f, 0f, 1f)
+        }
     }
 
     /** Draws a unit quad filled with a solid RGB color (used for loading / error state). */
-    private fun renderColor(stack: PoseStack, tesselator: Tesselator, type: RenderType, r: Int, g: Int, b: Int) {
-        val pose = stack.last().pose()
-        val builder: BufferBuilder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.BLOCK)
+    private fun renderColor(drawQuad: QuadRenderer, type: RenderType, r: Int, g: Int, b: Int) {
+        drawQuad(type) { pose, builder ->
+            builder.addVertex(pose, 0f, 0f, 0f).setColor(r, g, b, 255).setUv(0f, 1f).setLight(0xF000F0)
+                .setNormal(0f, 0f, 1f)
+            builder.addVertex(pose, 1f, 0f, 0f).setColor(r, g, b, 255).setUv(1f, 1f).setLight(0xF000F0)
+                .setNormal(0f, 0f, 1f)
+            builder.addVertex(pose, 1f, 1f, 0f).setColor(r, g, b, 255).setUv(1f, 0f).setLight(0xF000F0)
+                .setNormal(0f, 0f, 1f)
+            builder.addVertex(pose, 0f, 1f, 0f).setColor(r, g, b, 255).setUv(0f, 0f).setLight(0xF000F0)
+                .setNormal(0f, 0f, 1f)
+        }
+    }
 
-        builder.addVertex(pose, 0f, 0f, 0f).setColor(r, g, b, 255).setUv(0f, 1f).setLight(0xF000F0)
-            .setNormal(0f, 0f, 1f)
-        builder.addVertex(pose, 1f, 0f, 0f).setColor(r, g, b, 255).setUv(1f, 1f).setLight(0xF000F0)
-            .setNormal(0f, 0f, 1f)
-        builder.addVertex(pose, 1f, 1f, 0f).setColor(r, g, b, 255).setUv(1f, 0f).setLight(0xF000F0)
-            .setNormal(0f, 0f, 1f)
-        builder.addVertex(pose, 0f, 1f, 0f).setColor(r, g, b, 255).setUv(0f, 0f).setLight(0xF000F0)
-            .setNormal(0f, 0f, 1f)
-
+    private fun drawImmediate(stack: PoseStack, type: RenderType, appendVertices: QuadAppender) {
+        val builder = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.BLOCK)
+        appendVertices(stack.last(), builder)
         type.draw(builder.buildOrThrow())
     }
 }

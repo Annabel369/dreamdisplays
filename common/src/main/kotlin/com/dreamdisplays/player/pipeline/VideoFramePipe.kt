@@ -52,7 +52,7 @@ internal class VideoFramePipe(private val debugLabel: String) {
     private val readyBufferRef = AtomicReference<ByteBuffer?>(null)
     private val frameAvailable = AtomicBoolean(false)
 
-    private val uploader = AsyncTextureUploader(stateCache = true)
+    private var uploader: AsyncTextureUploader? = null
 
     private var uploadTotalNs = 0L
     private var uploadCount = 0
@@ -83,7 +83,8 @@ internal class VideoFramePipe(private val debugLabel: String) {
         buf.rewind()
         val start = System.nanoTime()
         if (!texture.isClosed && texture is GlTexture) {
-            uploader.upload(texture.glId(), buf, texture.getWidth(0), texture.getHeight(0))
+            val textureUploader = uploader ?: AsyncTextureUploader(stateCache = true).also { uploader = it }
+            textureUploader.upload(texture.glId(), buf, texture.getWidth(0), texture.getHeight(0))
         }
         if (MediaPlayer.DEBUG) {
             uploadTotalNs += System.nanoTime() - start
@@ -106,7 +107,10 @@ internal class VideoFramePipe(private val debugLabel: String) {
      * Releases the PBO ring. Must be called from the render thread when this pipe is permanently
      * discarded (i.e., the owning [MediaPlayer] is being stopped for good).
      */
-    fun cleanup() = uploader.cleanup()
+    fun cleanup() {
+        uploader?.cleanup()
+        uploader = null
+    }
 
     /**
      * Starts the video reader thread and returns it (already running).

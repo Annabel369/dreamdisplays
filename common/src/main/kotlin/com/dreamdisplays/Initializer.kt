@@ -9,6 +9,7 @@ import com.dreamdisplays.ffmpeg.FFmpegBinary
 import com.dreamdisplays.net.Packets
 import com.dreamdisplays.utils.FacingUtil
 import com.dreamdisplays.utils.GeneralUtil
+import com.dreamdisplays.utils.MinecraftScreenUtil
 import com.dreamdisplays.utils.RayCastingUtil
 import com.dreamdisplays.ytdlp.FormatDiskCache
 import com.dreamdisplays.ytdlp.YtDlp
@@ -195,7 +196,7 @@ object Initializer {
      */
     fun onEndTick(minecraft: Minecraft) {
         val level = minecraft.level
-        if (level != null && minecraft.currentServer != null) {
+        if (level != null && (minecraft.currentServer != null || minecraft.isLocalServer)) {
             if (lastLevel == null) {
                 lastLevel = level
                 checkVersionAndSendPacket()
@@ -282,7 +283,7 @@ object Initializer {
     /** Renders all active PiP overlays on the HUD when the player is in-world and no screen is open. */
     fun onRenderHud(mc: Minecraft, graphics: GuiGraphicsExtractor, partialTick: Float) {
         if (mc.level == null || mc.player == null) return
-        if (mc.screen != null) return
+        if (MinecraftScreenUtil.currentScreen(mc) != null) return
         PipOverlayManager.renderAll(mc, graphics, -1, -1, false, partialTick)
     }
 
