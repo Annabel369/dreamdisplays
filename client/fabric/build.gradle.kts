@@ -27,6 +27,7 @@ fun scVersion(name: String): String = stonecutterVersions.getProperty(name)
 
 sourceSets.main {
     kotlin.srcDir(project(":server").file("src/main/kotlin"))
+    kotlin.exclude("com/dreamdisplays/server/utils/net/PacketReceiver.kt")
 }
 
 loom {
@@ -95,7 +96,7 @@ tasks.named("validateAccessWidener") { enabled = false }
 tasks.shadowJar {
     configurations = listOf(project.configurations.getByName("shadow"))
     archiveBaseName.set("dreamdisplays-fabric")
-    archiveVersion.set("${rootProject.version}+mc$activeStonecutterVersion")
+    archiveVersion.set("$activeStonecutterVersion-${rootProject.version}")
     dependencies {
         include(project(":common"))
         include(dependency("org.xerial:sqlite-jdbc"))
@@ -140,5 +141,5 @@ tasks.shadowJar {
 }
 
 tasks.withType<AbstractArchiveTask>().configureEach {
-    archiveVersion.set("${rootProject.version}+mc$activeStonecutterVersion")
+    archiveVersion.set("$activeStonecutterVersion-${rootProject.version}")
 }

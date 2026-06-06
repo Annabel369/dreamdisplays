@@ -81,7 +81,7 @@ tasks.build {
 
 tasks.shadowJar {
     archiveBaseName.set("dreamdisplays-paper")
-    archiveVersion.set("${rootProject.version}+mc${rootProject.file("versions/active.txt").readText().trim()}")
+    archiveVersion.set("${rootProject.file("versions/active.txt").readText().trim()}-${rootProject.version}")
     manifest {
         attributes(
             "paperweight-mappings-namespace" to "mojang",
@@ -118,5 +118,5 @@ tasks.shadowJar {
 }
 
 tasks.withType<AbstractArchiveTask>().configureEach {
-    archiveVersion.set("${rootProject.version}+mc${rootProject.file("versions/active.txt").readText().trim()}")
+    archiveVersion.set("${rootProject.file("versions/active.txt").readText().trim()}-${rootProject.version}")
 }

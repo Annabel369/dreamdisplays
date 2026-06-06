@@ -4,7 +4,7 @@ subprojects {
     tasks.withType<AbstractArchiveTask>().configureEach {
         isPreserveFileTimestamps = false
         isReproducibleFileOrder = true
-        archiveVersion.set("${project.version}+mc$activeStonecutterVersion")
+        archiveVersion.set("$activeStonecutterVersion-${project.version}")
     }
 
     tasks.withType<ProcessResources>().configureEach {

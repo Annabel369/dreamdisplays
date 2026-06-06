@@ -60,7 +60,7 @@ java {
 tasks.shadowJar {
     configurations = listOf(project.configurations.getByName("shadow"))
     archiveBaseName.set("dreamdisplays-neoforge")
-    archiveVersion.set("${rootProject.version}+mc$activeStonecutterVersion")
+    archiveVersion.set("$activeStonecutterVersion-${rootProject.version}")
     dependencies {
         include(project(":common"))
         include(dependency("org.apache.commons:commons-compress"))
@@ -82,5 +82,5 @@ tasks.shadowJar {
 }
 
 tasks.withType<AbstractArchiveTask>().configureEach {
-    archiveVersion.set("${rootProject.version}+mc$activeStonecutterVersion")
+    archiveVersion.set("$activeStonecutterVersion-${rootProject.version}")
 }
