@@ -305,7 +305,7 @@ object Initializer {
         DisplayManager.saveAllScreens()
         timerThread.interrupt()
         DisplayManager.unloadAll()
-        Focuser.instance.interrupt()
+        Focuser.instance?.interrupt()
     }
 
     /** Updates the local premium flag from a server [Packets.Premium] packet. */
