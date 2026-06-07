@@ -63,7 +63,14 @@ class Client : ClientModInitializer, Mod {
         LevelRenderEvents.BEFORE_GIZMOS.register { context ->
             val mc = Minecraft.getInstance()
             if (mc.level != null && mc.player != null) {
-                renderScreens(context, mc)
+                renderSubmittedScreens(context, mc)
+            }
+        }
+
+        LevelRenderEvents.END_MAIN.register { context ->
+            val mc = Minecraft.getInstance()
+            if (mc.level != null && mc.player != null) {
+                renderBufferedScreens(context, mc)
             }
         }
 
@@ -108,8 +115,12 @@ class Client : ClientModInitializer, Mod {
     }
 
     //? if >=26 {
-    private fun renderScreens(context: LevelRenderContext, mc: Minecraft) {
+    private fun renderSubmittedScreens(context: LevelRenderContext, mc: Minecraft) {
         val camera = mainCamera(mc)
+        if (hasBufferSource(context)) {
+            return
+        }
+
         val submitNodeCollector = runCatching {
             context.javaClass.getMethod("submitNodeCollector").invoke(context)
         }.getOrNull()
@@ -128,6 +139,31 @@ class Client : ClientModInitializer, Mod {
             logger.warn("Fabric custom geometry submission unavailable, falling back to immediate rendering: ${e.message}.")
             ScreenRenderer.render(context.poseStack(), camera)
         }
+    }
+
+    private fun renderBufferedScreens(context: LevelRenderContext, mc: Minecraft) {
+        if (!hasBufferSource(context)) {
+            return
+        }
+        renderWithBufferSource(context, mainCamera(mc))
+    }
+
+    private fun hasBufferSource(context: LevelRenderContext): Boolean =
+        runCatching { context.javaClass.getMethod("bufferSource") }.isSuccess
+
+    private fun renderWithBufferSource(context: LevelRenderContext, camera: Camera) {
+        val bufferSource = runCatching {
+            context.javaClass.getMethod("bufferSource").invoke(context)
+        }.getOrNull() ?: return
+        val getBuffer = runCatching { bufferSource.javaClass.getMethod("getBuffer", RenderType::class.java) }
+            .getOrNull() ?: return
+        val endBatch = runCatching { bufferSource.javaClass.getMethod("endBatch") }
+            .getOrNull() ?: return
+
+        ScreenRenderer.render(context.poseStack(), camera) { type, appendVertices ->
+            appendVertices(context.poseStack().last(), getBuffer.invoke(bufferSource, type) as VertexConsumer)
+        }
+        endBatch.invoke(bufferSource)
     }
 
     private fun mainCamera(mc: Minecraft): Camera {

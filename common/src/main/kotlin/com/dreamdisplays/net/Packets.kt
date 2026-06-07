@@ -2,21 +2,14 @@ package com.dreamdisplays.net
 
 import com.dreamdisplays.Initializer
 import com.dreamdisplays.utils.FacingUtil
-//? if >=26 {
 import net.minecraft.network.RegistryFriendlyByteBuf
-//?} else
-/*import net.minecraft.network.FriendlyByteBuf*/
 import net.minecraft.network.codec.StreamCodec
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload
 import net.minecraft.resources.Identifier
 import org.joml.Vector3i
 import java.util.*
 
-// Custom-payload codecs bind to RegistryFriendlyByteBuf on 26.x; legacy 1.21.11 used FriendlyByteBuf.
-//? if >=26 {
 private typealias PacketBuf = RegistryFriendlyByteBuf
-//?} else
-/*private typealias PacketBuf = FriendlyByteBuf*/
 
 /**
  * Packets used for communication between the client and the server.
