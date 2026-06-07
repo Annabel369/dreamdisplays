@@ -55,9 +55,9 @@ include(":server")
 stonecutter {
     create(rootProject) {
         versions(
+            "1.21.11",
             "26.1.2",
             "26.2-pre-4",
-            "1.21.11",
         )
     }
 }

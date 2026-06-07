@@ -25,7 +25,6 @@ tasks.withType<Jar>().configureEach {
     from(rootProject.file("LICENSE"))
 }
 
-// --- Version-directive chiseling -------------------------------------------------------------
 // Stonecutter only versions the root project (dependency selection); the shared Kotlin code lives
 // in subprojects, so Stonecutter never processes the `//? if >=26 { ... //?} else /*...*/`
 // directives in their source. This transform resolves those directives for the active Minecraft
@@ -68,6 +67,5 @@ run {
         }
     }
     tasks.withType<KotlinCompile>().configureEach { dependsOn(chiselSource) }
-    // sourcesJar (and any other consumer of the source set dirs) must wait for the chisel output.
     tasks.matching { it.name == "sourcesJar" }.configureEach { dependsOn(chiselSource) }
 }

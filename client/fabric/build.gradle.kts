@@ -1,8 +1,6 @@
 import java.util.Properties
 
 plugins {
-    // Both loom ids are declared (without applying) so the type-safe `loom { }` / `loom.layered`
-    // accessors are generated; the correct one is applied imperatively below based on the target.
     id("net.fabricmc.fabric-loom") apply false
     id("net.fabricmc.fabric-loom-remap") apply false
     id("maven-publish")
@@ -61,13 +59,6 @@ tasks.matching { it.name == "sourcesJar" }.configureEach {
     dependsOn(":server:chiselSource")
 }
 
-// The shared access widener (classtweaker) is authored with the `official` namespace, which is
-// correct for the deobfuscated 26.x targets that use plain fabric-loom. The legacy obfuscated
-// 1.21.11 target uses fabric-loom-remap, which requires the `named` namespace instead. Materialize a
-// build-dir copy with the header rewritten to the namespace the active target needs, then point both
-// Loom and processResources at that copy so compile-time remapping and the runtime-bundled widener
-// agree. Loom reads this file during project configuration (Minecraft setup), so it must exist
-// eagerly rather than via a task action.
 val sourceClassTweaker = project(":common").file("src/main/resources/dreamdisplays.classtweaker")
 val classTweakerNamespace = if (isLegacyObfuscated) "named" else "official"
 val generatedClassTweaker = layout.buildDirectory.file("generated/classtweaker/dreamdisplays.classtweaker").get().asFile
@@ -81,8 +72,6 @@ run {
     }
 }
 
-// Use the extension type directly (not the generated `loom { }` accessor) because the loom plugin
-// is applied imperatively above, so the type-safe accessor may not be generated.
 val loomExt = the<net.fabricmc.loom.api.LoomGradleExtensionAPI>()
 loomExt.accessWidenerPath.set(generatedClassTweaker)
 
