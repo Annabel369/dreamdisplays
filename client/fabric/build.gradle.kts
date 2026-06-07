@@ -163,6 +163,7 @@ tasks.shadowJar {
         include(project(":common"))
         include(dependency("org.xerial:sqlite-jdbc"))
         include(dependency("org.apache.commons:commons-compress"))
+        include(dependency("org.tukaani:xz"))
         include(dependency("org.jetbrains.kotlin:kotlin-stdlib"))
         include(dependency("org.jetbrains:annotations"))
         include(dependency("org.tomlj:tomlj"))
