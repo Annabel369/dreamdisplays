@@ -27,6 +27,7 @@
 - Critical `Quilt` entry point crash
 - Ancient bug between `NeoForge` and IntelliJ IDEA
 - `NeoForge` client shutdown on normal server disconnect
+- `FFmpeg` extraction on Linux ([#93](https://github.com/arsmotorin/dreamdisplays/issues/93))
 - Picture-in-Picture mode displays size calculation
 - Temporary focus mute no longer overwrites the user's mute setting
 - Unsafe server display cache filenames on some systems
