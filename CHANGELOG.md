@@ -1,11 +1,12 @@
-# Version 1.7.2
+# Version 1.8.0-SNAPSHOT.1
 
 ## Client
 
 ### Features
 
-- Add Minecraft 1.21.11 support (in-world Picture-in-Picture overlay on Fabric is currently 26.x-only)
 - Support 26.2-pre4 version
+- Back 1.21.11 version support ([#91](https://github.com/arsmotorin/dreamdisplays/pull/91))
+- Support `Vulcan` for display rendering
 - Use `LoggerFactory` for logging
 - Use default config implementation instead of `AbstractConfig`
 - Use `Stonecutter` for the multiversion system
@@ -13,24 +14,35 @@
 
 ### Improvements
 
-- Update dependencies
 - Reorganize the project structure
+- Video frame pipeline stability and brightness handling
 - Enhance cookie handling and process management
 - Improve `Gradle` configuration
 - Remove INotSleep's utils
 - Improve the publishing system
+- Update dependencies
 
 ### Fixes
 
 - Critical `Quilt` entry point crash
 - Ancient bug between `NeoForge` and IntelliJ IDEA
+- `NeoForge` client shutdown on normal server disconnect
+- Picture-in-Picture mode displays size calculation
+- Temporary focus mute no longer overwrites the user's mute setting
+- Unsafe server display cache filenames on some systems
+- Invalid display sizes no longer create broken client textures
 
 ## Server
 
 ### Improvements
 
-- Update dependencies
+- Remove the useless report button in single-player
 - Improve `Gradle` configuration
+- Update dependencies
+
+### Fixes
+
+- `MariaDB` compatibility issue ([#88](https://github.com/arsmotorin/dreamdisplays/pull/88))
 
 # Version 1.7.1
 
