@@ -120,7 +120,7 @@ jobs:
       - name: Build with Gradle
         run: |
           ./gradlew \
-            :client:fabric:shadowJar \
+            :client:fabric:publishJar \
             :client:neoforge:shadowJar \
             :server:shadowJar \
             --no-daemon \
