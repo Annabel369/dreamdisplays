@@ -1,3 +1,16 @@
+# Version 1.8.0-SNAPSHOT.2
+
+## Client
+
+### Fixes
+
+- Fix critical crash on the `Fabric` 1.21.11 version
+- Fix incompatibility between the popout window and `Vivecraft` mod
+
+## Server
+
+- No changes
+
 # Version 1.8.0-SNAPSHOT.1
 
 ## Client
