@@ -519,7 +519,7 @@ class DisplayMenu private constructor() : Screen(Component.translatable("dreamdi
         val videoReady = ds.isVideoStarted && !ds.errored
         val popoutLocked = ds.isPopoutActive
         syncReset?.active = videoReady && ds.canEdit && ds.isSync
-        renderDReset?.active = videoReady && !popoutLocked && ds.renderDistance != Initializer.config.defaultDistance
+        renderDReset?.active = videoReady && !popoutLocked && ds.renderDistance != ClientStateManager.config.defaultDistance
         qualityReset?.active = videoReady && ds.quality != "720"
         brightness?.let { brightnessReset?.active = videoReady && abs(it.value - 0.5) > 0.01 }
         volume?.let { volumeReset?.active = videoReady && abs(it.value - 0.5) > 0.01 }
