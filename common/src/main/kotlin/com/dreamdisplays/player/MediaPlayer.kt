@@ -16,6 +16,7 @@ import com.dreamdisplays.player.stream.MediaStreamSelector
 import com.dreamdisplays.player.stream.StreamSet
 import com.dreamdisplays.player.util.MediaUtil
 import com.dreamdisplays.player.util.daemon
+import com.dreamdisplays.media.api.MediaStream
 import com.dreamdisplays.ytdlp.YtDlp
 import com.mojang.blaze3d.textures.GpuTexture
 import net.minecraft.core.BlockPos
@@ -209,9 +210,8 @@ class MediaPlayer(
     fun getAvailableQualities(): List<Int> {
         val cap = if (ClientStateManager.isPremium) 2160 else 1080
         return streams?.availableVideo.orEmpty().asSequence()
-            .mapNotNull { it.resolution }
-            .map { MediaStreamSelector.parseQualityValue(it, Int.MAX_VALUE) }
-            .filter { it != Int.MAX_VALUE && it <= cap }
+            .mapNotNull { it.height }
+            .filter { it <= cap }
             .distinct().sorted().toList()
     }
 
@@ -417,7 +417,7 @@ class MediaPlayer(
         if (sessionManager.isPlaying) startStreams(newSs, pos) else clock.seekOffsetNanos = pos
     }
 
-    private fun com.dreamdisplays.ytdlp.YtStream.contentAspect(): Double {
+    private fun MediaStream.contentAspect(): Double {
         val w = width ?: return 0.0
         val h = height ?: return 0.0
         return if (w > 0 && h > 0) w / h.toDouble() else 0.0

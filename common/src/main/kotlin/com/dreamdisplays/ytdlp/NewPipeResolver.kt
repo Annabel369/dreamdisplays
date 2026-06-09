@@ -40,20 +40,18 @@ object NewPipeResolver : MediaResolver {
 
     private val initialized = AtomicBoolean(false)
 
-    // ----- MediaResolver -----
-
     override val priority: Int = 10
 
     override fun canResolve(source: MediaSource): Boolean = source is MediaSource.YouTube
 
-    override suspend fun resolve(source: MediaSource): ResolvedMedia {
+    override fun resolve(source: MediaSource): ResolvedMedia {
         ensureInitialized()
         check(initialized.get()) { "NewPipeExtractor failed to initialize" }
         val url = when (source) {
-            is MediaSource.YouTube  -> "https://www.youtube.com/watch?v=${source.videoId}"
-            is MediaSource.Remote   -> source.url
+            is MediaSource.YouTube -> "https://www.youtube.com/watch?v=${source.videoId}"
+            is MediaSource.Remote -> source.url
             is MediaSource.DirectStream -> source.streamUrl
-            is MediaSource.Twitch   -> throw UnsupportedOperationException("Twitch not supported by NewPipeResolver")
+            is MediaSource.Twitch -> throw UnsupportedOperationException("Twitch not supported by NewPipeResolver")
         }
         val info = StreamInfo.getInfo(url)
         val isLive = info.streamType == StreamType.LIVE_STREAM ||
@@ -75,8 +73,6 @@ object NewPipeResolver : MediaResolver {
             isSeekable = !isLive && info.duration > 0,
         )
     }
-
-    // ----- existing fast-path (used directly by YtDlp fallback) -----
 
     /** Initializes NewPipeExtractor with our HTTP downloader exactly once. Safe to call repeatedly. */
     fun ensureInitialized() {

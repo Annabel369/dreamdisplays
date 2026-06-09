@@ -37,7 +37,7 @@ class DefaultMediaResolverChain : MediaResolverChain {
      * @throws IllegalStateException if no resolver can handle [source].
      * @throws Throwable the last resolver's failure if every capable resolver threw.
      */
-    override suspend fun resolve(source: MediaSource): ResolvedMedia {
+    override fun resolve(source: MediaSource): ResolvedMedia {
         var lastError: Throwable? = null
         var attempted = false
         for (resolver in resolvers) {

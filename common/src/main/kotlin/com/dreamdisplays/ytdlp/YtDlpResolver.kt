@@ -29,7 +29,7 @@ object YtDlpResolver : MediaResolver {
      * Resolves [source] by running `yt-dlp` (blocking) via [YtDlp.fetch]. Throws on subprocess
      * failure or timeout; the resolver chain catches it and either falls through or reports the error.
      */
-    override suspend fun resolve(source: MediaSource): ResolvedMedia {
+    override fun resolve(source: MediaSource): ResolvedMedia {
         val url = when (source) {
             is MediaSource.YouTube -> "https://www.youtube.com/watch?v=${source.videoId}"
             is MediaSource.Remote -> source.url
