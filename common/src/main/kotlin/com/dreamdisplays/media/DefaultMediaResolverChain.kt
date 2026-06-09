@@ -32,6 +32,13 @@ class DefaultMediaResolverChain : MediaResolverChain {
         backing.remove(resolver)
     }
 
+    /** Calls [MediaResolver.prefetch] on every capable resolver for [source]. */
+    override fun prefetch(source: MediaSource) {
+        for (resolver in resolvers) {
+            if (resolver.canResolve(source)) resolver.prefetch(source)
+        }
+    }
+
     /**
      * Resolves [source] against each capable resolver in priority order, returning the first success.
      * @throws IllegalStateException if no resolver can handle [source].

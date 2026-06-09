@@ -5,7 +5,10 @@ import com.dreamdisplays.display.DisplayScreen
 import com.dreamdisplays.display.DisplaySettings
 import com.dreamdisplays.net.Packets
 import com.dreamdisplays.utils.FacingUtil
-import com.dreamdisplays.ytdlp.YtDlp
+import com.dreamdisplays.client.core.DreamServices
+import com.dreamdisplays.client.core.getOrNull
+import com.dreamdisplays.media.api.MediaResolverChain
+import com.dreamdisplays.media.api.MediaSource
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
 import org.joml.Vector3i
@@ -43,7 +46,7 @@ object DisplayLifecycleManager {
             if (dist > renderDistance) return
         }
 
-        YtDlp.prefetchFormats(packet.url)
+        DreamServices.registry.getOrNull<MediaResolverChain>()?.prefetch(MediaSource.from(packet.url))
         DisplayManager.unloadedScreens.remove(packet.uuid)
 
         createScreen(

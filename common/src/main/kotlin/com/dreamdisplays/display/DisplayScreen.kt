@@ -10,7 +10,10 @@ import com.dreamdisplays.managers.ClientStateManager
 import com.dreamdisplays.player.MediaPlayer
 import com.dreamdisplays.net.Packets
 import com.dreamdisplays.utils.MinecraftScreenUtil
-import com.dreamdisplays.ytdlp.YtDlp
+import com.dreamdisplays.client.core.DreamServices
+import com.dreamdisplays.client.core.getOrNull
+import com.dreamdisplays.media.api.MediaResolverChain
+import com.dreamdisplays.media.api.MediaSource
 import net.minecraft.client.Minecraft
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.client.renderer.rendertype.RenderSetup
@@ -139,7 +142,7 @@ class DisplayScreen(
     private fun loadVideoInternal(videoUrl: String, lang: String, preservePausedState: Boolean) {
         if (videoUrl == "") return
 
-        YtDlp.prefetchFormats(videoUrl)
+        DreamServices.registry.getOrNull<MediaResolverChain>()?.prefetch(MediaSource.from(videoUrl))
 
         val generation = mediaPlayerGeneration.incrementAndGet()
         val oldPlayer = mediaPlayer

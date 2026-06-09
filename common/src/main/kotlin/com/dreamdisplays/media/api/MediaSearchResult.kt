@@ -1,21 +1,17 @@
-package com.dreamdisplays.ytdlp
+package com.dreamdisplays.media.api
 
-/**
- * Data class representing YouTube video information, as returned by `yt-dlp`. It includes methods to format the
- * duration, view count, and like count.
- */
-class YtVideoInfo(
+/** Describes a single video returned by a search or related-video query. */
+data class MediaSearchResult(
     val id: String,
     val title: String,
     val uploader: String?,
-    internal val durationSec: Long?,
-    internal val viewCount: Long?,
-    internal val likeCount: Long? = null,
+    val durationSec: Long?,
+    val viewCount: Long?,
+    val likeCount: Long? = null,
     val publishedText: String? = null,
-    internal val publishedDaysAgo: Int? = null,
+    val publishedDaysAgo: Int? = null,
 ) {
-
-    /** Returns true if the video is published within the last [daysWindow] days. */
+    /** Returns true if the video was published within the last [daysWindow] days. */
     fun isRecent(daysWindow: Int): Boolean =
         publishedDaysAgo != null && publishedDaysAgo >= 0 && publishedDaysAgo <= daysWindow
 
@@ -25,7 +21,7 @@ class YtVideoInfo(
     /** Returns the YouTube thumbnail URL for this video. */
     fun getThumbnailUrl(): String = "https://i.ytimg.com/vi/$id/mqdefault.jpg"
 
-    /** Returns a formatted string representation of the video duration in HH:MM:SS format. */
+    /** Returns a formatted HH:MM:SS duration string, or empty if unavailable. */
     fun formatDuration(): String {
         val s = durationSec ?: return ""
         if (s <= 0) return ""
@@ -36,7 +32,7 @@ class YtVideoInfo(
         else String.format("%d:%02d", m, sec)
     }
 
-    /** Returns a formatted string representation of the video view count. */
+    /** Returns a formatted view count string (e.g. "1.2M views"), or empty if unavailable. */
     fun formatViews(): String {
         val v = viewCount ?: return ""
         if (v <= 0) return ""
@@ -48,7 +44,7 @@ class YtVideoInfo(
         }
     }
 
-    /** Returns a formatted string representation of the video like count. */
+    /** Returns a formatted like count string (e.g. "42K"), or empty if unavailable. */
     fun formatLikes(): String {
         val l = likeCount ?: return ""
         if (l <= 0) return ""

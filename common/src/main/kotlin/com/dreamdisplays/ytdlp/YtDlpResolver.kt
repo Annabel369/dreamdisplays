@@ -25,6 +25,17 @@ object YtDlpResolver : MediaResolver {
     /** Twitch is unsupported by this pipeline; everything else is delegated to `yt-dlp`. */
     override fun canResolve(source: MediaSource): Boolean = source !is MediaSource.Twitch
 
+    /** Pre-warms the yt-dlp format cache for [source] on a background thread. */
+    override fun prefetch(source: MediaSource) {
+        val url = when (source) {
+            is MediaSource.YouTube -> "https://www.youtube.com/watch?v=${source.videoId}"
+            is MediaSource.Remote -> source.url
+            is MediaSource.DirectStream -> source.streamUrl
+            is MediaSource.Twitch -> return
+        }
+        YtDlp.prefetchFormats(url)
+    }
+
     /**
      * Resolves [source] by running `yt-dlp` (blocking) via [YtDlp.fetch]. Throws on subprocess
      * failure or timeout; the resolver chain catches it and either falls through or reports the error.

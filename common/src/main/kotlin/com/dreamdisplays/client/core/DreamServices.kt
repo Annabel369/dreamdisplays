@@ -11,7 +11,9 @@ import com.dreamdisplays.client.render.ClientRenderService
 import com.dreamdisplays.client.ui.PipOverlayManager
 import com.dreamdisplays.media.DefaultMediaResolverChain
 import com.dreamdisplays.media.DefaultStreamSelector
+import com.dreamdisplays.media.YtDlpSearchService
 import com.dreamdisplays.media.api.MediaResolverChain
+import com.dreamdisplays.media.api.MediaSearchService
 import com.dreamdisplays.media.api.StreamSelector
 import com.dreamdisplays.render.ScreenRenderer
 import com.dreamdisplays.ytdlp.NewPipeResolver
@@ -51,6 +53,7 @@ object DreamServices {
             register(YtDlpResolver)
         }
         registry.register<MediaResolverChain>(resolverChain)
+        registry.register<MediaSearchService>(YtDlpSearchService())
         registry.register<StreamSelector>(DefaultStreamSelector())
         registry.register<OverlayManager>(PipOverlayManager)
         registry.register<DisplayInteractionService>(MinecraftDisplayInteractionService)

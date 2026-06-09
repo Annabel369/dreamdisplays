@@ -10,7 +10,13 @@ import com.dreamdisplays.meta.UpdateCheck
 import com.dreamdisplays.net.Packets
 import com.dreamdisplays.utils.GeneralUtil
 import com.dreamdisplays.utils.MinecraftScreenUtil
-import com.dreamdisplays.ytdlp.*
+import com.dreamdisplays.client.core.DreamServices
+import com.dreamdisplays.client.core.getOrNull
+import com.dreamdisplays.media.api.MediaSearchResult
+import com.dreamdisplays.media.api.MediaSearchService
+import com.dreamdisplays.ytdlp.Thumbnails
+import com.dreamdisplays.ytdlp.VideoMetadataCache
+import com.dreamdisplays.ytdlp.VideoTitleCache
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 //? if >=26 {
@@ -345,7 +351,7 @@ class DisplayMenu private constructor() : Screen(Component.translatable("dreamdi
             }
         }
 
-    private fun onPickSuggested(info: YtVideoInfo) {
+    private fun onPickSuggested(info: MediaSearchResult) {
         val ds = displayScreen ?: return
         ds.playSuggestedVideo(info.getWatchUrl(), ds.lang ?: "")
         VideoTitleCache.put(info.id, info.title)
@@ -500,7 +506,7 @@ class DisplayMenu private constructor() : Screen(Component.translatable("dreamdi
             s.width = suggestionsW
             s.height = suggestionsH
 
-            val currentId = YtDlp.extractVideoId(ds.videoUrl)
+            val currentId = DreamServices.registry.getOrNull<MediaSearchService>()?.extractVideoId(ds.videoUrl ?: "")
             if (currentId != null && currentId != lastSuggestedVideoId) {
                 lastSuggestedVideoId = currentId
                 s.setRelatedTo(currentId)
@@ -674,7 +680,7 @@ class DisplayMenu private constructor() : Screen(Component.translatable("dreamdi
     }
 
     private fun renderTitleOverlay(g: GuiGraphicsCompat, scr: DisplayScreen, x: Int, y: Int, w: Int) {
-        val videoId = YtDlp.extractVideoId(scr.videoUrl)
+        val videoId = DreamServices.registry.getOrNull<MediaSearchService>()?.extractVideoId(scr.videoUrl ?: "")
         val meta = if (videoId != null) VideoMetadataCache.get(videoId) else null
         if (videoId != null && meta == null) VideoMetadataCache.requestAsync(videoId)
 
@@ -742,7 +748,7 @@ class DisplayMenu private constructor() : Screen(Component.translatable("dreamdi
 
     private fun currentThumbnail(): Identifier? {
         val url = displayScreen?.videoUrl ?: return null
-        val id = YtDlp.extractVideoId(url) ?: return null
+        val id = DreamServices.registry.getOrNull<MediaSearchService>()?.extractVideoId(url) ?: return null
         Thumbnails.get(id)?.let { return it }
         Thumbnails.request(id, "https://i.ytimg.com/vi/$id/mqdefault.jpg")
         return null

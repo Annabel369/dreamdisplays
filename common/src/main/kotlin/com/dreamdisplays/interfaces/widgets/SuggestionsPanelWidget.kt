@@ -3,10 +3,11 @@ package com.dreamdisplays.client.ui.widgets
 import com.dreamdisplays.Initializer
 import com.dreamdisplays.client.ui.GuiGraphicsCompat
 import com.dreamdisplays.client.ui.drawText
+import com.dreamdisplays.client.core.DreamServices
+import com.dreamdisplays.client.core.get
+import com.dreamdisplays.media.api.MediaSearchResult
+import com.dreamdisplays.media.api.MediaSearchService
 import com.dreamdisplays.ytdlp.Thumbnails
-import com.dreamdisplays.ytdlp.YouTubeInnerTube
-import com.dreamdisplays.ytdlp.YtDlp
-import com.dreamdisplays.ytdlp.YtVideoInfo
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
 //? if >=26 {
@@ -37,13 +38,13 @@ import kotlin.math.sin
 // TODO: rewrite this class entirely in 1.9.0
 class SuggestionsPanelWidget(
     x: Int, y: Int, width: Int, height: Int,
-    private val onPick: Consumer<YtVideoInfo>,
+    private val onPick: Consumer<MediaSearchResult>,
 ) : AbstractWidget(x, y, width, height, Component.translatable("dreamdisplays.button.suggestions")) {
 
     private val searchBox: EditBox
     private val clearButtonWidget: ButtonWidget
     private val searchActionButtonWidget: ButtonWidget
-    private val cards = ArrayList<YtVideoInfo>()
+    private val cards = ArrayList<MediaSearchResult>()
     private val requestSeq = AtomicInteger()
     private var currentVideoId: String? = null
     private var statusMessage: String? = null
@@ -115,31 +116,26 @@ class SuggestionsPanelWidget(
             currentVideoId?.let { loadRelated(it) }
             return
         }
+        val svc = DreamServices.registry.get<MediaSearchService>()
         val maybeId = if (q.startsWith("http") || "youtube.com" in q || "youtu.be" in q)
-            YtDlp.extractVideoId(q) else null
+            svc.extractVideoId(q) else null
         if (maybeId != null) {
             startLoad()
             val seq2 = requestSeq.incrementAndGet()
             EXECUTOR.submit {
                 try {
-                    val meta = YouTubeInnerTube.metadata(maybeId)
+                    val meta = svc.metadata(maybeId)
                     if (meta != null) publish(seq2, listOf(meta), null)
                     else publish(
                         seq2, listOf(
-                            YtVideoInfo(
-                                maybeId,
-                                "https://youtu.be/$maybeId", null, null, null
-                            )
+                            MediaSearchResult(maybeId, "https://youtu.be/$maybeId", null, null, null)
                         ), null
                     )
                 } catch (e: Exception) {
                     logger.warn("URL meta fetch failed: ${e.message}")
                     publish(
                         seq2, listOf(
-                            YtVideoInfo(
-                                maybeId,
-                                "https://youtu.be/$maybeId", null, null, null
-                            )
+                            MediaSearchResult(maybeId, "https://youtu.be/$maybeId", null, null, null)
                         ), null
                     )
                 }
@@ -150,7 +146,7 @@ class SuggestionsPanelWidget(
         val seq = requestSeq.incrementAndGet()
         EXECUTOR.submit {
             try {
-                val r = YtDlp.search(q, RESULT_LIMIT)
+                val r = svc.search(q, RESULT_LIMIT)
                 publish(seq, r, null)
             } catch (e: Exception) {
                 logger.warn("Search failed '$q': ${e.message}")
@@ -164,7 +160,7 @@ class SuggestionsPanelWidget(
         val seq = requestSeq.incrementAndGet()
         EXECUTOR.submit {
             try {
-                val r = YtDlp.related(videoId, RESULT_LIMIT)
+                val r = DreamServices.registry.get<MediaSearchService>().related(videoId, RESULT_LIMIT)
                 publish(seq, r, null)
             } catch (e: Exception) {
                 logger.warn("Related failed $videoId: ${e.message}")
@@ -180,7 +176,7 @@ class SuggestionsPanelWidget(
         scrollOffset = 0
     }
 
-    private fun publish(seq: Int, results: List<YtVideoInfo>?, error: String?) {
+    private fun publish(seq: Int, results: List<MediaSearchResult>?, error: String?) {
         Minecraft.getInstance().execute {
             if (seq != requestSeq.get()) return@execute
             cards.clear()
@@ -465,7 +461,7 @@ class SuggestionsPanelWidget(
     }
 
     private fun renderCardSized(
-        g: GuiGraphicsCompat, f: Font, info: YtVideoInfo, x: Int, y: Int,
+        g: GuiGraphicsCompat, f: Font, info: MediaSearchResult, x: Int, y: Int,
         w: Int, thumbH: Int, cardH: Int, hover: Boolean
     ) {
         val bg = if (hover) {
