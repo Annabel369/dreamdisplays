@@ -7,6 +7,8 @@ import com.dreamdisplays.api.PlaybackService
 import com.dreamdisplays.client.input.DisplayInteractionService
 import com.dreamdisplays.client.input.MinecraftDisplayInteractionService
 import com.dreamdisplays.client.overlay.OverlayManager
+import com.dreamdisplays.client.popout.DefaultPopoutManager
+import com.dreamdisplays.client.popout.PopoutManager
 import com.dreamdisplays.client.render.ClientRenderService
 import com.dreamdisplays.client.ui.PipOverlayManager
 import com.dreamdisplays.media.DefaultMediaResolverChain
@@ -58,6 +60,7 @@ object DreamServices {
         registry.register<OverlayManager>(PipOverlayManager)
         registry.register<DisplayInteractionService>(MinecraftDisplayInteractionService)
         registry.register<ClientRenderService>(ScreenRenderer)
+        registry.register<PopoutManager>(DefaultPopoutManager())
         registry.register<DisplayService>(DefaultDisplayService())
         registry.register<PlaybackService>(DefaultPlaybackService())
     }
