@@ -15,9 +15,11 @@ import java.util.concurrent.CopyOnWriteArrayList
  *
  * Frame-sink wiring remains internal to [com.dreamdisplays.managers.DisplayPopoutManager]; [openWindow] and
  * [openPip] return null because the sink is set directly on the player, not surfaced here.
+ *
+ * @since 1.7.0
  */
 class DefaultPopoutManager : PopoutManager {
-
+    /** Thread-safe list of subscribers to [PopoutEvent]s, which are emitted by the per-screen popout managers and fanned out here. */
     private val listeners = CopyOnWriteArrayList<(PopoutEvent) -> Unit>()
 
     /** Opens or focuses the detached window for [displayId]. Returns null, the sink is managed internally. */
