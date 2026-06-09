@@ -35,15 +35,18 @@ import javax.swing.SwingUtilities
 /**
  * Detached window that mirrors the decoded video.
  */
-class VideoPopoutWindow(private val onClose: () -> Unit) : PopoutWindow {
+class VideoPopoutWindow(
+    private val displayId: String,
+    private val onClose: () -> Unit,
+) : PopoutWindow {
 
     private val eventListeners = java.util.concurrent.CopyOnWriteArrayList<(PopoutEvent) -> Unit>()
 
     private fun emitEvent(event: PopoutEvent) = eventListeners.forEach { it(event) }
 
     private val impl: PopoutBackend =
-        if (IS_MACOS) GlfwBackend { emitEvent(PopoutEvent.Closed); onClose() }
-        else AwtBackend { emitEvent(PopoutEvent.Closed); onClose() }
+        if (IS_MACOS) GlfwBackend { emitEvent(PopoutEvent.Closed(displayId)); onClose() }
+        else AwtBackend { emitEvent(PopoutEvent.Closed(displayId)); onClose() }
 
     override val backend: WindowBackend = if (IS_MACOS) WindowBackend.GLFW else WindowBackend.AWT
     override val isOpen: Boolean get() = impl.isOpen
@@ -53,7 +56,7 @@ class VideoPopoutWindow(private val onClose: () -> Unit) : PopoutWindow {
     /** Opens the window using dimensions from [config] and returns a [VideoFrameSink] for pushing frames. */
     override fun open(config: WindowConfig): VideoFrameSink {
         impl.open(config.initialWidth, config.initialHeight)
-        emitEvent(PopoutEvent.Opened)
+        emitEvent(PopoutEvent.Opened(displayId))
         return VideoFrameSink { frame ->
             impl.updateFrame(
                 ByteBuffer.wrap(frame.data), frame.width, frame.height,
@@ -75,7 +78,11 @@ class VideoPopoutWindow(private val onClose: () -> Unit) : PopoutWindow {
     fun renderFrame() = impl.renderFrame()
 
     /** Opens (or focuses) the window. Safe to call from any thread. */
-    fun open(videoW: Int, videoH: Int) = impl.open(videoW, videoH)
+    fun open(videoW: Int, videoH: Int) {
+        val wasOpen = impl.isOpen
+        impl.open(videoW, videoH)
+        if (!wasOpen) emitEvent(PopoutEvent.Opened(displayId))
+    }
 
     /** Closes the window. Safe to call from any thread. */
     override fun close() = impl.close()

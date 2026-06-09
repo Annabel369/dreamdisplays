@@ -13,7 +13,7 @@ import com.dreamdisplays.display.DisplayManager
 import com.dreamdisplays.platform.api.Platform
 import com.dreamdisplays.display.DisplayScreen
 import com.dreamdisplays.display.DisplaySettings
-import com.dreamdisplays.ffmpeg.FFmpegBinary
+import com.dreamdisplays.player.process.FFmpegBinary
 import com.dreamdisplays.ytdlp.FormatDiskCache
 import com.dreamdisplays.ytdlp.YtDlp
 import java.io.File

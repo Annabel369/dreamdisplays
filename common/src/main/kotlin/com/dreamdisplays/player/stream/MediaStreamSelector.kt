@@ -24,6 +24,18 @@ object MediaStreamSelector {
         else -> intArrayOf(3840, 2160)
     }
 
+    /**
+     * Picks the stream pair closest to [target] height from [streams]' available tracks.
+     * @return the updated set, or null when no switch is possible (no candidate, or the best
+     *   candidate is already the current video).
+     */
+    internal fun switchQuality(streams: ActiveStreams, target: Int, lang: String): ActiveStreams? {
+        val best = pickVideo(streams.availableVideo, target)
+            ?.takeIf { it.url != streams.currentVideo.url } ?: return null
+        val audio = pickAudio(streams.availableAudio, lang, best) ?: streams.currentAudio
+        return streams.copy(currentVideo = best, currentAudio = audio)
+    }
+
     /** Pick the best video stream closest to [target] quality (height in pixels). */
     fun pickVideo(streams: List<MediaStream>?, target: Int): MediaStream? {
         if (streams.isNullOrEmpty()) return null

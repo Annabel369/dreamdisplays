@@ -64,4 +64,9 @@ class DefaultPopoutManager : PopoutManager {
         listeners += listener
         return AutoCloseable { listeners -= listener }
     }
+
+    /** Fans [event] out to every subscriber. Emitted by [com.dreamdisplays.managers.DisplayPopoutManager]. */
+    override fun emit(event: PopoutEvent) {
+        listeners.forEach { it(event) }
+    }
 }

@@ -14,4 +14,7 @@ interface PopoutManager {
     fun getPopoutSink(displayId: DisplayId): VideoFrameSink?
 
     fun on(listener: (PopoutEvent) -> Unit): AutoCloseable
+
+    /** Publishes [event] to all [on] subscribers. Called by the popout surfaces themselves. */
+    fun emit(event: PopoutEvent)
 }

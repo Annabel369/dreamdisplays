@@ -6,7 +6,7 @@ import com.dreamdisplays.display.DisplayManager
 import com.dreamdisplays.display.DisplayScreen
 import com.dreamdisplays.display.DisplaySettings
 import com.dreamdisplays.managers.ClientStateManager
-import com.dreamdisplays.meta.UpdateCheck
+import com.dreamdisplays.utils.UpdateCheck
 import com.dreamdisplays.net.Packets
 import com.dreamdisplays.utils.GeneralUtil
 import com.dreamdisplays.utils.MinecraftScreenUtil

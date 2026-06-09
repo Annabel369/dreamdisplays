@@ -1,4 +1,4 @@
-package com.dreamdisplays.ffmpeg
+package com.dreamdisplays.player.process
 
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.xz.XZCompressorInputStream

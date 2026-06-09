@@ -8,7 +8,7 @@ import com.dreamdisplays.media.api.MediaSource
 import com.dreamdisplays.media.api.StreamPreferences
 import com.dreamdisplays.media.api.StreamSelector
 import com.dreamdisplays.media.api.VideoQuality
-import com.dreamdisplays.player.stream.StreamSet
+import com.dreamdisplays.player.stream.ActiveStreams
 
 /**
  * Resolves stream metadata via [MediaResolverChain], selects the best tracks via [StreamSelector],
@@ -51,7 +51,7 @@ internal object MediaPreparationService {
         val durationNanos = resolved.metadata.duration?.inWholeNanoseconds ?: 0L
 
         return PreparedMedia(
-            streamSet = StreamSet(
+            streamSet = ActiveStreams(
                 availableVideo = resolved.videoStreams,
                 availableAudio = resolved.audioStreams,
                 currentVideo = video,

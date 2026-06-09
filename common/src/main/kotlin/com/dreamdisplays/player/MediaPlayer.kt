@@ -13,7 +13,7 @@ import com.dreamdisplays.player.policy.RetryPolicy
 import com.dreamdisplays.player.process.HwAccelBackend
 import com.dreamdisplays.player.preparation.MediaPreparationService
 import com.dreamdisplays.player.stream.MediaStreamSelector
-import com.dreamdisplays.player.stream.StreamSet
+import com.dreamdisplays.player.stream.ActiveStreams
 import com.dreamdisplays.player.util.MediaUtil
 import com.dreamdisplays.player.util.daemon
 import com.dreamdisplays.media.api.DreamMediaException
@@ -109,16 +109,18 @@ class MediaPlayer(
     private val controlExecutor = Executors.newSingleThreadExecutor { daemon(it, "MediaPlayer-ctrl") }
     private val initCallbacks = CopyOnWriteArrayList<() -> Unit>()
 
-    @Volatile private var streams: StreamSet? = null
+    @Volatile private var streams: ActiveStreams? = null
     @Volatile private var liveStream = false
     @Volatile private var seekable = false
     @Volatile private var durationHintNanos = 0L
     @Volatile private var lastQuality = 0
     @Volatile private var brightness = 1.0
-    @Volatile private var userVolume = ClientStateManager.config.defaultDisplayVolume
-    @Volatile private var lastAttenuation = 1.0
     @Volatile private var hwAccelDisabled = false
     @Volatile private var sessionStartNanos = 0L
+
+    private val volume = VolumeController(ClientStateManager.config.defaultDisplayVolume) {
+        sessionManager.setVolume(it)
+    }
 
     init { INIT_EXECUTOR.submit { initialize() } }
 
@@ -198,10 +200,7 @@ class MediaPlayer(
         sessionManager.updateFrame(texture, displayScreen.textureWidth, displayScreen.textureHeight)
 
     /** Sets the user-controlled volume (0.0–2.0). Distance attenuation is applied on top. */
-    fun setVolume(volume: Float) {
-        userVolume = volume.toDouble().coerceIn(0.0, 2.0)
-        sessionManager.setVolume(userVolume * lastAttenuation)
-    }
+    fun setVolume(volume: Float) = this.volume.setUserVolume(volume)
 
     /** Sets the brightness multiplier applied to each frame before GPU upload (0.0-2.0). */
     fun setBrightness(brightness: Float) {
@@ -228,11 +227,7 @@ class MediaPlayer(
      */
     fun tick(playerPos: BlockPos, maxRadius: Double) {
         if (!isReady) return
-        val attenuation = (1.0 - minOf(1.0, displayScreen.getDistanceToScreen(playerPos) / maxRadius)).let { it * it }
-        if (abs(attenuation - lastAttenuation) > 1e-5) {
-            lastAttenuation = attenuation
-            sessionManager.setVolume(userVolume * attenuation)
-        }
+        volume.updateAttenuation(displayScreen.getDistanceToScreen(playerPos), maxRadius)
     }
 
     /**
@@ -280,7 +275,7 @@ class MediaPlayer(
      * Starts [sessionManager] for the given [streamSet] at [offsetNanos], then starts the watchdog.
      * Must be called from the control executor thread.
      */
-    private fun startStreams(streamSet: StreamSet, offsetNanos: Long) {
+    private fun startStreams(streamSet: ActiveStreams, offsetNanos: Long) {
         if (terminated.get()) return
         val hwAccel =
             if (ClientStateManager.config.useHwAccel && !hwAccelDisabled) HwAccelBackend.detectDefault()
@@ -412,14 +407,11 @@ class MediaPlayer(
         val ss = streams ?: return
         val target = desired.targetHeight ?: return
         if (target == lastQuality) return
-        val best = MediaStreamSelector.pickVideo(ss.availableVideo, target)
-            ?.takeIf { it.url != ss.currentVideo.url } ?: return
-        val chosenAudio = MediaStreamSelector.pickAudio(ss.availableAudio, lang, best) ?: ss.currentAudio
+        val newSs = MediaStreamSelector.switchQuality(ss, target, lang) ?: return
         val pos = if (liveStream) 0L else getCurrentTime()
-        val newSs = ss.copy(currentVideo = best, currentAudio = chosenAudio)
         streams = newSs
-        lastQuality = MediaStreamSelector.parseQuality(best)
-        displayScreen.videoContentAspect = best.contentAspect()
+        lastQuality = MediaStreamSelector.parseQuality(newSs.currentVideo)
+        displayScreen.videoContentAspect = newSs.currentVideo.contentAspect()
         if (sessionManager.isPlaying) startStreams(newSs, pos) else clock.seekOffsetNanos = pos
     }
 

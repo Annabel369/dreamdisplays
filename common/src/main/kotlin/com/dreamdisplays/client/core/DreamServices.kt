@@ -8,13 +8,21 @@ import com.dreamdisplays.client.capabilities.CapabilityNegotiationService
 import com.dreamdisplays.client.capabilities.ClientCapabilityDetector
 import com.dreamdisplays.client.capabilities.DefaultCapabilityNegotiationService
 import com.dreamdisplays.client.capabilities.MinecraftClientCapabilityDetector
+import com.dreamdisplays.client.input.CompositeInputHandler
+import com.dreamdisplays.client.input.DefaultKeyBindingRegistry
 import com.dreamdisplays.client.input.DisplayInteractionService
+import com.dreamdisplays.client.input.DisplayMenuInputHandler
+import com.dreamdisplays.client.input.InputHandler
+import com.dreamdisplays.client.input.KeyBindingRegistry
 import com.dreamdisplays.client.input.MinecraftDisplayInteractionService
+import com.dreamdisplays.client.overlay.CrosshairPolicy
 import com.dreamdisplays.client.overlay.OverlayManager
 import com.dreamdisplays.client.popout.DefaultPopoutManager
 import com.dreamdisplays.client.popout.PopoutManager
 import com.dreamdisplays.client.render.ClientRenderService
+import com.dreamdisplays.client.render.RenderHook
 import com.dreamdisplays.client.ui.PipOverlayManager
+import com.dreamdisplays.managers.ClientStateManager
 import com.dreamdisplays.media.DefaultMediaResolverChain
 import com.dreamdisplays.media.DefaultMediaSessionManager
 import com.dreamdisplays.media.DefaultStreamSelector
@@ -76,21 +84,25 @@ object DreamServices {
             register(NewPipeResolver)
             register(YtDlpResolver)
         }
+
         registry.register<MediaResolverChain>(resolverChain)
         registry.register<MediaSearchService>(YtDlpSearchService())
         registry.register<MediaSessionManager>(DefaultMediaSessionManager())
         registry.register<StreamSelector>(DefaultStreamSelector())
         registry.register<OverlayManager>(PipOverlayManager)
+        registry.register<CrosshairPolicy>(CrosshairPolicy { ClientStateManager.isOnScreen })
         registry.register<DisplayInteractionService>(MinecraftDisplayInteractionService)
+        registry.register<KeyBindingRegistry>(DefaultKeyBindingRegistry().apply { register(DisplayMenuInputHandler.OPEN_MENU_BINDING) })
+        registry.register<InputHandler>(CompositeInputHandler().apply { register(DisplayMenuInputHandler()) })
         registry.register<ClientRenderService>(ScreenRenderer)
         registry.register<PopoutManager>(DefaultPopoutManager())
         registry.register<DisplayService>(DefaultDisplayService())
         registry.register<PlaybackService>(DefaultPlaybackService())
         registry.register<ClientCapabilityDetector>(MinecraftClientCapabilityDetector)
-        registry.register<CapabilityNegotiationService>(
-            DefaultCapabilityNegotiationService(MinecraftClientCapabilityDetector)
-        )
+        registry.register<CapabilityNegotiationService>(DefaultCapabilityNegotiationService(MinecraftClientCapabilityDetector))
         registry.register<DisplayRenderer>(DefaultDisplayRenderer())
         registry.register<TextureUploaderFactory>(TextureUploaderFactory { AsyncTextureUploader(stateCache = it) })
+        registry.register<RenderHook>(RenderHook { context -> registry.getOrNull<DisplayRenderer>()?.takeIf { it.registeredCount > 0 }?.renderAll(context)
+        })
     }
 }

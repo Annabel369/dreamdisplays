@@ -8,8 +8,11 @@ import com.dreamdisplays.client.core.DreamServices
 import com.dreamdisplays.client.core.getOrNull
 import com.dreamdisplays.client.input.DisplayInteraction
 import com.dreamdisplays.client.input.DisplayInteractionService
+import com.dreamdisplays.client.input.DisplayMenuInputHandler
+import com.dreamdisplays.client.input.InputAction
+import com.dreamdisplays.client.input.InputHandler
+import com.dreamdisplays.client.input.KeyBindingRegistry
 import com.dreamdisplays.client.overlay.OverlayManager
-import com.dreamdisplays.client.ui.DisplayMenu
 import com.dreamdisplays.display.DisplayManager
 import com.dreamdisplays.display.DisplayScreen
 import net.minecraft.client.Minecraft
@@ -17,6 +20,7 @@ import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.world.effect.MobEffectInstance
 import net.minecraft.world.effect.MobEffects
 import org.lwjgl.glfw.GLFW
+import java.util.UUID
 
 /**
  * Handles per-tick client display state: level changes, hover, unloading, shortcuts, and focus mode.
@@ -28,6 +32,7 @@ object ClientTickManager {
     private var wasFocused = false
     private var unloadCheckTick = 0
     private var hoveredDisplayScreen: DisplayScreen? = null
+    private var lastHoveredId: UUID? = null
     private var tickCount = 0L
 
     fun tick(minecraft: Minecraft) {
@@ -64,6 +69,7 @@ object ClientTickManager {
         // (replaces the inline RayCastingUtil + isInScreen mapping this manager used to duplicate).
         val hoveredId = DreamServices.registry.getOrNull<DisplayInteractionService>()
             ?.getCurrentTarget()?.displayId?.uuid
+        notifyHoverChange(hoveredId)
         hoveredDisplayScreen = null
         ClientStateManager.isOnScreen = false
         val player = minecraft.player ?: return
@@ -93,14 +99,17 @@ object ClientTickManager {
             }
         }
 
+        // The menu-open button comes from the KeyBindingRegistry; the click itself is routed
+        // through the InputHandler chain (DisplayMenuInputHandler consumes sneak+click-on-display).
         val window = minecraft.window.handle()
-        val pressed = GLFW.glfwGetMouseButton(window, GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS
-        if (pressed && !wasPressed && player.isShiftKeyDown) {
-            hoveredDisplayScreen?.let {
-                DreamServices.registry.getOrNull<DisplayInteractionService>()
-                    ?.emit(DisplayInteraction.RightClicked(DisplayId(it.uuid)))
-                DisplayMenu.open(it)
-            }
+        val menuButton = DreamServices.registry.getOrNull<KeyBindingRegistry>()
+            ?.findById(DisplayMenuInputHandler.OPEN_MENU_BINDING_ID)?.defaultKey
+            ?: GLFW.GLFW_MOUSE_BUTTON_RIGHT
+        val pressed = GLFW.glfwGetMouseButton(window, menuButton) == GLFW.GLFW_PRESS
+        if (pressed && !wasPressed) {
+            DreamServices.registry.getOrNull<InputHandler>()?.handle(
+                InputAction.MouseClicked(minecraft.mouseHandler.xpos(), minecraft.mouseHandler.ypos(), menuButton)
+            )
         }
         wasPressed = pressed
 
@@ -112,6 +121,15 @@ object ClientTickManager {
             player.removeEffect(MobEffects.BLINDNESS)
             wasFocused = false
         }
+    }
+
+    /** Emits [DisplayInteraction.Looked] / [DisplayInteraction.LookedAway] when the crosshair target changes. */
+    private fun notifyHoverChange(hoveredId: UUID?) {
+        if (hoveredId == lastHoveredId) return
+        val service = DreamServices.registry.getOrNull<DisplayInteractionService>()
+        lastHoveredId?.let { service?.emit(DisplayInteraction.LookedAway(DisplayId(it))) }
+        hoveredId?.let { service?.emit(DisplayInteraction.Looked(DisplayId(it))) }
+        lastHoveredId = hoveredId
     }
 
     /** Kicks off the capability handshake (legacy Version packet) for the just-joined server. */

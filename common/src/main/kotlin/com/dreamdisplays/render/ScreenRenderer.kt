@@ -1,21 +1,19 @@
 package com.dreamdisplays.render
 
-import com.dreamdisplays.api.DisplayFacing
 import com.dreamdisplays.api.DisplayId
 import com.dreamdisplays.client.core.DreamServices
 import com.dreamdisplays.client.core.getOrNull
 import com.dreamdisplays.client.render.ClientRenderService
 import com.dreamdisplays.client.render.DisplayRenderEntry
+import com.dreamdisplays.client.render.RenderHook
 import com.dreamdisplays.display.DisplayManager
 import com.dreamdisplays.display.DisplayScreen
-import com.dreamdisplays.render.api.DisplayRenderer
 import com.dreamdisplays.render.api.RenderContext
 import com.dreamdisplays.render.api.TextureHandle
 import com.mojang.blaze3d.vertex.*
 import net.minecraft.client.Camera
 import net.minecraft.client.renderer.rendertype.RenderType
 import net.minecraft.world.phys.Vec3
-import org.joml.Quaternionf
 import kotlin.math.abs
 import kotlin.math.sin
 
@@ -76,11 +74,11 @@ object ScreenRenderer : ClientRenderService {
             stack.popPose()
         }
 
-        // API-registered surfaces draw in the same world pass, after the mod's own screens.
+        // The registered RenderHook extends the world pass after the mod's own screens
+        // (by default it dispatches API-registered surfaces, see DreamServices.bootstrap).
         // The world render hooks do not surface a partial tick, hence the 0f tickDelta.
-        DreamServices.registry.getOrNull<DisplayRenderer>()
-            ?.takeIf { it.registeredCount > 0 }
-            ?.renderAll(MinecraftRenderContext(stack, camera, 0f))
+        DreamServices.registry.getOrNull<RenderHook>()
+            ?.onRender(MinecraftRenderContext(stack, camera, 0f))
     }
 
     /** Translates and rotates the pose for [displayScreen]'s facing direction, then renders the video or fallback color. */
@@ -90,29 +88,7 @@ object ScreenRenderer : ClientRenderService {
         displayScreen.fitTexture()
 
         stack.pushPose()
-        moveForward(stack, displayScreen.facing, 0.008f)
-
-        when (displayScreen.facing) {
-            DisplayFacing.NORTH -> {
-                moveHorizontal(stack, DisplayFacing.NORTH, -displayScreen.width.toFloat())
-                moveForward(stack, DisplayFacing.NORTH, 1f)
-            }
-
-            DisplayFacing.SOUTH -> {
-                moveHorizontal(stack, DisplayFacing.SOUTH, 1f)
-                moveForward(stack, DisplayFacing.SOUTH, 1f)
-            }
-
-            DisplayFacing.EAST -> {
-                moveHorizontal(stack, DisplayFacing.EAST, -(displayScreen.width - 1).toFloat())
-                moveForward(stack, DisplayFacing.EAST, 2f)
-            }
-
-            DisplayFacing.WEST -> {}
-        }
-
-        fixRotation(stack, displayScreen.facing)
-        stack.scale(displayScreen.width.toFloat(), displayScreen.height.toFloat(), 0f)
+        DisplayGeometry.applyScreenTransform(stack, displayScreen.facing, displayScreen.width, displayScreen.height)
 
         if (displayScreen.isVideoStarted && displayScreen.texture != null && displayScreen.renderType != null) {
             renderGpuTexture(drawQuad, displayScreen.renderType!!)
@@ -126,46 +102,6 @@ object ScreenRenderer : ClientRenderService {
             }
         }
         stack.popPose()
-    }
-
-    /** Applies the quaternion rotation and position correction so the quad faces the correct direction for [facing]. */
-    private fun fixRotation(stack: PoseStack, facing: DisplayFacing) {
-        val rotation: Quaternionf = when (facing) {
-            DisplayFacing.NORTH -> Quaternionf().rotationY(Math.toRadians(180.0).toFloat()).also {
-                stack.translate(0f, 0f, 1f)
-            }
-
-            DisplayFacing.WEST -> Quaternionf().rotationY(Math.toRadians(-90.0).toFloat()).also {
-                stack.translate(0f, 0f, 0f)
-            }
-
-            DisplayFacing.EAST -> Quaternionf().rotationY(Math.toRadians(90.0).toFloat()).also {
-                stack.translate(-1f, 0f, 1f)
-            }
-
-            else -> Quaternionf().also { stack.translate(-1f, 0f, 0f) }
-        }
-        stack.mulPose(rotation)
-    }
-
-    /** Translates [stack] by [amount] blocks in the forward axis of [facing]. */
-    private fun moveForward(stack: PoseStack, facing: DisplayFacing, amount: Float) {
-        when (facing) {
-            DisplayFacing.NORTH -> stack.translate(0f, 0f, -amount)
-            DisplayFacing.WEST -> stack.translate(-amount, 0f, 0f)
-            DisplayFacing.EAST -> stack.translate(amount, 0f, 0f)
-            else -> stack.translate(0f, 0f, amount)
-        }
-    }
-
-    /** Translates [stack] by [amount] blocks along the horizontal axis perpendicular to [facing]. */
-    private fun moveHorizontal(stack: PoseStack, facing: DisplayFacing, amount: Float) {
-        when (facing) {
-            DisplayFacing.NORTH -> stack.translate(-amount, 0f, 0f)
-            DisplayFacing.WEST -> stack.translate(0f, 0f, amount)
-            DisplayFacing.EAST -> stack.translate(0f, 0f, -amount)
-            else -> stack.translate(amount, 0f, 0f)
-        }
     }
 
     /** Draws a unit quad using the screen's GPU texture. */
