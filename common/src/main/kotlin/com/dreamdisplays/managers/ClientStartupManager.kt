@@ -3,6 +3,7 @@ package com.dreamdisplays.managers
 import com.dreamdisplays.Config
 import com.dreamdisplays.Focuser
 import com.dreamdisplays.Initializer
+import com.dreamdisplays.client.core.DreamServices
 import com.dreamdisplays.display.DisplayManager
 import com.dreamdisplays.display.DisplayScreen
 import com.dreamdisplays.display.DisplaySettings
@@ -34,6 +35,10 @@ object ClientStartupManager {
     fun start() {
         config.reload()
         DisplaySettings.load()
+
+        // Wire the contract-typed service graph (media resolver chain, ...) before any
+        // background prewarm touches it.
+        DreamServices.bootstrap()
 
         YtDlp.prewarmAsync()
         FFmpegBinary.prewarmAsync()

@@ -9,6 +9,6 @@ interface PopoutWindow : AutoCloseable {
     val backend: WindowBackend
 
     fun open(config: WindowConfig): VideoFrameSink
-    fun close()
+    override fun close()
     fun on(listener: (PopoutEvent) -> Unit): AutoCloseable
 }

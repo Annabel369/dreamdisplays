@@ -29,7 +29,7 @@ sealed interface DisplayRuntimeState {
     val isActive: Boolean
         get() = this is Playing || this is Paused || this is Buffering
 
-    val sessionId: String?
+    val currentSessionId: String?
         get() = when (this) {
             is Playing -> sessionId
             is Paused -> sessionId
