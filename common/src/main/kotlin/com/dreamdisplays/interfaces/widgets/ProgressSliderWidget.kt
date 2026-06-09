@@ -1,5 +1,7 @@
 package com.dreamdisplays.client.ui.widgets
 
+import com.dreamdisplays.client.ui.GuiGraphicsCompat
+
 import net.minecraft.client.InputType
 import net.minecraft.client.Minecraft
 //? if >=26 {
@@ -32,23 +34,15 @@ class ProgressSliderWidget(
     private var dragTargetNanos = 0L
 
     //? if >=26 {
-    override fun extractWidgetRenderState(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
-        val dur = durationSupplier.asLong
-        val cur = if (dragging) dragTargetNanos else currentSupplier.asLong
-        val value = if (dur > 0) Mth.clamp(cur / dur.toDouble(), 0.0, 1.0) else 0.0
-
-        g.blitSprite(RenderPipelines.GUI_TEXTURED, getTrackSprite(), x, y, width, height)
-        val handleX = x + (value * (width - 8).toDouble()).toInt()
-        g.blitSprite(RenderPipelines.GUI_TEXTURED, getHandleSprite(), handleX, y, 8, height)
-
-        val label = buildLabel(cur, dur)
-        extractScrollingStringOverContents(
-            g.textRendererForWidget(this, GuiGraphicsExtractor.HoveredTextEffects.TOOLTIP_AND_CURSOR),
-            label, 4
-        )
-    }
+    override fun extractWidgetRenderState(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) = drawWidget(g, mouseX, mouseY, partialTick)
+    private fun drawLabel(g: GuiGraphicsCompat, text: Component, padding: Int) =
+        extractScrollingStringOverContents(g.textRendererForWidget(this, GuiGraphicsExtractor.HoveredTextEffects.TOOLTIP_AND_CURSOR), text, padding)
     //?} else
-    /*override fun renderWidget(g: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
+    /*override fun renderWidget(g: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) = drawWidget(g, mouseX, mouseY, partialTick)
+    private fun drawLabel(g: GuiGraphicsCompat, text: Component, padding: Int) =
+        renderScrollingStringOverContents(g.textRendererForWidget(this, GuiGraphics.HoveredTextEffects.TOOLTIP_AND_CURSOR), text, padding)*/
+
+    private fun drawWidget(g: GuiGraphicsCompat, mouseX: Int, mouseY: Int, partialTick: Float) {
         val dur = durationSupplier.asLong
         val cur = if (dragging) dragTargetNanos else currentSupplier.asLong
         val value = if (dur > 0) Mth.clamp(cur / dur.toDouble(), 0.0, 1.0) else 0.0
@@ -58,11 +52,8 @@ class ProgressSliderWidget(
         g.blitSprite(RenderPipelines.GUI_TEXTURED, getHandleSprite(), handleX, y, 8, height)
 
         val label = buildLabel(cur, dur)
-        renderScrollingStringOverContents(
-            g.textRendererForWidget(this, GuiGraphics.HoveredTextEffects.TOOLTIP_AND_CURSOR),
-            label, 4
-        )
-    }*/
+        drawLabel(g, label, 4)
+    }
 
     /** Formats the current / total time as a colored text component for display on the slider. */
     private fun buildLabel(cur: Long, dur: Long): MutableComponent {

@@ -1,5 +1,7 @@
 package com.dreamdisplays.client.ui.widgets
 
+import com.dreamdisplays.client.ui.GuiGraphicsCompat
+
 import net.minecraft.client.InputType
 import net.minecraft.client.Minecraft
 //? if >=26 {
@@ -52,21 +54,15 @@ abstract class SliderWidget(
     }
 
     //? if >=26 {
-    override fun extractWidgetRenderState(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
-        g.blitSprite(RenderPipelines.GUI_TEXTURED, getTexture(), x, y, width, height)
-        g.blitSprite(
-            RenderPipelines.GUI_TEXTURED, getHandleTexture(),
-            x + (value * (width - 8).toDouble()).toInt(), y, 8, height
-        )
-        val i = if (active) 16777215 else 10526880
-        val msg = message.copy().withStyle { it.withColor(i) }
-        extractScrollingStringOverContents(
-            g.textRendererForWidget(this, GuiGraphicsExtractor.HoveredTextEffects.TOOLTIP_AND_CURSOR),
-            msg, 2
-        )
-    }
+    override fun extractWidgetRenderState(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) = drawWidget(g, mouseX, mouseY, partialTick)
+    private fun drawLabel(g: GuiGraphicsCompat, text: Component, padding: Int) =
+        extractScrollingStringOverContents(g.textRendererForWidget(this, GuiGraphicsExtractor.HoveredTextEffects.TOOLTIP_AND_CURSOR), text, padding)
     //?} else
-    /*override fun renderWidget(g: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
+    /*override fun renderWidget(g: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) = drawWidget(g, mouseX, mouseY, partialTick)
+    private fun drawLabel(g: GuiGraphicsCompat, text: Component, padding: Int) =
+        renderScrollingStringOverContents(g.textRendererForWidget(this, GuiGraphics.HoveredTextEffects.TOOLTIP_AND_CURSOR), text, padding)*/
+
+    private fun drawWidget(g: GuiGraphicsCompat, mouseX: Int, mouseY: Int, partialTick: Float) {
         g.blitSprite(RenderPipelines.GUI_TEXTURED, getTexture(), x, y, width, height)
         g.blitSprite(
             RenderPipelines.GUI_TEXTURED, getHandleTexture(),
@@ -74,11 +70,8 @@ abstract class SliderWidget(
         )
         val i = if (active) 16777215 else 10526880
         val msg = message.copy().withStyle { it.withColor(i) }
-        renderScrollingStringOverContents(
-            g.textRendererForWidget(this, GuiGraphics.HoveredTextEffects.TOOLTIP_AND_CURSOR),
-            msg, 2
-        )
-    }*/
+        drawLabel(g, msg, 2)
+    }
 
     override fun onClick(event: MouseButtonEvent, doubleClick: Boolean) {
         setValueFromMouse(event.x())
