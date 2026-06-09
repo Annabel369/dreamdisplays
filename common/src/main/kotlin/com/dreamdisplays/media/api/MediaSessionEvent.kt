@@ -9,7 +9,7 @@ sealed interface MediaSessionEvent {
     ) : MediaSessionEvent
 
     data class PositionChanged(val position: Duration) : MediaSessionEvent
-    data class Error(val message: String, val isFatal: Boolean) : MediaSessionEvent
+    data class Error(val cause: DreamMediaException) : MediaSessionEvent
     data object Ended : MediaSessionEvent
     data object Stalled : MediaSessionEvent
     data object Recovered : MediaSessionEvent

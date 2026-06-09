@@ -2,6 +2,7 @@ package com.dreamdisplays.player.preparation
 
 import com.dreamdisplays.client.core.DreamServices
 import com.dreamdisplays.client.core.get
+import com.dreamdisplays.media.api.DreamMediaException
 import com.dreamdisplays.media.api.MediaResolverChain
 import com.dreamdisplays.media.api.MediaSource
 import com.dreamdisplays.media.api.StreamPreferences
@@ -22,7 +23,7 @@ internal object MediaPreparationService {
      * @param url raw media URL (YouTube, direct stream, etc.)
      * @param lang preferred audio language (empty = default)
      * @param quality preferred video quality string, e.g. "720p"
-     * @throws IllegalStateException if no usable streams are found
+     * @throws DreamMediaException if no usable streams are found
      */
     fun prepare(url: String, lang: String, quality: String): PreparedMedia {
         val registry = DreamServices.registry
@@ -31,7 +32,7 @@ internal object MediaPreparationService {
         val source = MediaSource.from(url)
         val resolved = chain.resolve(source)
 
-        check(resolved.streams.isNotEmpty()) { "No streams available for $url." }
+        if (resolved.streams.isEmpty()) throw DreamMediaException.NotFound("No streams available for $url.")
 
         val prefs = StreamPreferences(
             maxHeight = MediaStreamSelector.parseQualityValue(quality, 720).takeIf { it > 0 },
@@ -43,9 +44,9 @@ internal object MediaPreparationService {
         val selected = selector.select(resolved.streams, prefs)
 
         val video = selected.videoStream
-            ?: throw IllegalStateException("No usable video stream for $url.")
+            ?: throw DreamMediaException.NotFound("No usable video stream for $url.")
         val audio = selected.audioStream
-            ?: throw IllegalStateException("No usable audio stream for $url.")
+            ?: throw DreamMediaException.NotFound("No usable audio stream for $url.")
 
         val durationNanos = resolved.metadata.duration?.inWholeNanoseconds ?: 0L
 

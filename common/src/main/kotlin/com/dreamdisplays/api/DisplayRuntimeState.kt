@@ -1,5 +1,7 @@
 package com.dreamdisplays.api
 
+import com.dreamdisplays.media.api.DreamMediaException
+
 /**
  * Represents the runtime state of a display.
  *
@@ -33,9 +35,8 @@ sealed interface DisplayRuntimeState {
 
     /** The display has failed to load. */
     data class Failed(
-        val reason: String,
+        val cause: DreamMediaException,
         val retryCount: Int = 0,
-        val isFatal: Boolean = false,
     ) : DisplayRuntimeState
 
     /** The display has been stopped. */

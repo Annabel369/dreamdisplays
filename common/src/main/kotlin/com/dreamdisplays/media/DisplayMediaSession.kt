@@ -31,7 +31,7 @@ internal class DisplayMediaSession(private val screen: DisplayScreen) : MediaSes
     override val state: MediaSessionState
         get() = when {
             closed -> MediaSessionState.Released
-            screen.errored -> MediaSessionState.Error("playback error", isFatal = false)
+            screen.mediaError != null -> MediaSessionState.Error(screen.mediaError!!)
             screen.videoUrl.isNullOrEmpty() -> MediaSessionState.Idle
             !screen.isVideoStarted -> MediaSessionState.Preparing
             else -> MediaSessionState.Active(isPlaying = !screen.isPaused, isBuffering = false)
@@ -85,7 +85,7 @@ internal class DisplayMediaSession(private val screen: DisplayScreen) : MediaSes
     private fun DisplayEvent.toSessionEvent(): MediaSessionEvent? = when (this) {
         is DisplayEvent.StateChanged ->
             MediaSessionEvent.StateChanged(previous.toSessionState(), current.toSessionState())
-        is DisplayEvent.MediaError -> MediaSessionEvent.Error(reason, isFatal)
+        is DisplayEvent.MediaError -> MediaSessionEvent.Error(cause)
         is DisplayEvent.Removed -> MediaSessionEvent.Ended
         else -> null
     }
@@ -98,7 +98,7 @@ internal class DisplayMediaSession(private val screen: DisplayScreen) : MediaSes
         is DisplayRuntimeState.Buffering -> MediaSessionState.Active(isPlaying = false, isBuffering = true)
         is DisplayRuntimeState.Playing -> MediaSessionState.Active(isPlaying = true, isBuffering = false)
         is DisplayRuntimeState.Paused -> MediaSessionState.Active(isPlaying = false, isBuffering = false)
-        is DisplayRuntimeState.Failed -> MediaSessionState.Error(reason, isFatal)
+        is DisplayRuntimeState.Failed -> MediaSessionState.Error(cause)
         is DisplayRuntimeState.Stopped -> MediaSessionState.Ended
     }
 }

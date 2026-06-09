@@ -37,7 +37,7 @@ internal fun DisplayScreen.toDisplay(): Display = Display(
 )
 
 internal fun DisplayScreen.toRuntimeState(): DisplayRuntimeState = when {
-    errored -> DisplayRuntimeState.Failed("playback error")
+    mediaError != null -> DisplayRuntimeState.Failed(mediaError!!)
     videoUrl.isNullOrEmpty() -> DisplayRuntimeState.Idle
     !isVideoStarted -> DisplayRuntimeState.Preparing
     isPaused -> DisplayRuntimeState.Paused(uuid.toString(), currentTimeNanos / 1_000_000L)

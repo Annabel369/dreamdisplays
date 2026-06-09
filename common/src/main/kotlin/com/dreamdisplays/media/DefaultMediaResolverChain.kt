@@ -1,5 +1,6 @@
 package com.dreamdisplays.media
 
+import com.dreamdisplays.media.api.DreamMediaException
 import com.dreamdisplays.media.api.MediaResolver
 import com.dreamdisplays.media.api.MediaResolverChain
 import com.dreamdisplays.media.api.MediaSource
@@ -41,7 +42,7 @@ class DefaultMediaResolverChain : MediaResolverChain {
 
     /**
      * Resolves [source] against each capable resolver in priority order, returning the first success.
-     * @throws IllegalStateException if no resolver can handle [source].
+     * @throws DreamMediaException.Unknown if no resolver is registered for [source].
      * @throws Throwable the last resolver's failure if every capable resolver threw.
      */
     override fun resolve(source: MediaSource): ResolvedMedia {
@@ -56,7 +57,7 @@ class DefaultMediaResolverChain : MediaResolverChain {
                 lastError = e
             }
         }
-        if (!attempted) error("No resolver registered for source: $source")
-        throw lastError ?: IllegalStateException("All resolvers failed for source: $source")
+        if (!attempted) throw DreamMediaException.Unknown("No resolver registered for source: $source", isFatal = true)
+        throw lastError ?: DreamMediaException.Unknown("All resolvers failed for source: $source")
     }
 }

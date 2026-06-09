@@ -12,6 +12,7 @@ import com.dreamdisplays.net.Packets
 import com.dreamdisplays.utils.MinecraftScreenUtil
 import com.dreamdisplays.client.core.DreamServices
 import com.dreamdisplays.client.core.getOrNull
+import com.dreamdisplays.media.api.DreamMediaException
 import com.dreamdisplays.media.api.MediaResolverChain
 import com.dreamdisplays.media.api.MediaSource
 import net.minecraft.client.Minecraft
@@ -48,7 +49,8 @@ class DisplayScreen(
     var owner: Boolean = Minecraft.getInstance().player?.gameProfile?.id?.toString() == ownerUuid.toString()
     val isAdmin: Boolean get() = ClientStateManager.isAdmin
     var isLocked: Boolean? = null
-    var errored: Boolean = false
+    @Volatile var mediaError: DreamMediaException? = null
+    val errored: Boolean get() = mediaError != null
     val canEdit: Boolean get() = owner || isAdmin || isLocked != true
     var muted: Boolean = savedSettings.muted
     var texture: DynamicTexture? = null
@@ -148,7 +150,7 @@ class DisplayScreen(
         val oldPlayer = mediaPlayer
         mediaPlayer = null
         videoStarted = false
-        errored = false
+        mediaError = null
         lastSyncTargetNs = -1L
         serverSyncReceivedAt = 0L
         oldPlayer?.stop()

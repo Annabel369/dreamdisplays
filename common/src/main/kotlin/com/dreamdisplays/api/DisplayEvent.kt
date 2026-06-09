@@ -1,5 +1,7 @@
 package com.dreamdisplays.api
 
+import com.dreamdisplays.media.api.DreamMediaException
+
 /**
  * Represents an event that occurred on a display.
  *
@@ -33,7 +35,7 @@ sealed interface DisplayEvent {
     data class UrlChanged(override val displayId: DisplayId, val url: String?) : DisplayEvent
 
     /** Signifies that the display's media has encountered an error. */
-    data class MediaError(override val displayId: DisplayId, val reason: String, val isFatal: Boolean) : DisplayEvent
+    data class MediaError(override val displayId: DisplayId, val cause: DreamMediaException) : DisplayEvent
 
     /** Signifies that the display's media has been loaded and is now within range. */
     data class LoadedIntoRange(override val displayId: DisplayId) : DisplayEvent

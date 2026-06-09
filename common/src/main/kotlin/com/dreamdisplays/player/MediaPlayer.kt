@@ -16,6 +16,7 @@ import com.dreamdisplays.player.stream.MediaStreamSelector
 import com.dreamdisplays.player.stream.StreamSet
 import com.dreamdisplays.player.util.MediaUtil
 import com.dreamdisplays.player.util.daemon
+import com.dreamdisplays.media.api.DreamMediaException
 import com.dreamdisplays.media.api.MediaStream
 import com.dreamdisplays.ytdlp.YtDlp
 import com.mojang.blaze3d.textures.GpuTexture
@@ -71,7 +72,7 @@ class MediaPlayer(
     private val retryPolicy = RetryPolicy(MAX_FETCH_RETRIES)
 
     private val events = PlayerEvents(
-        onError = { state.set(PlaybackState.ERROR); displayScreen.errored = true },
+        onError = { e -> state.set(PlaybackState.ERROR); displayScreen.mediaError = e },
         onSeek = { displayScreen.afterSeek() },
     )
 
@@ -261,10 +262,14 @@ class MediaPlayer(
             success = true
             val ss = prepared.streamSet
             safeExecute { if (!terminated.get()) startStreams(ss, 0) }
+        } catch (e: DreamMediaException) {
+            logger.error("$debugLabel Initialization failed: ${e.message}")
+            state.set(PlaybackState.ERROR)
+            displayScreen.mediaError = e
         } catch (e: Exception) {
             logger.error("$debugLabel Initialization failed: ${e.message}")
             state.set(PlaybackState.ERROR)
-            displayScreen.errored = true
+            displayScreen.mediaError = DreamMediaException.Unknown(e.message ?: "Initialization failed", e)
         } finally {
             drainInitCallbacks(run = success)
         }
@@ -339,7 +344,7 @@ class MediaPlayer(
             logger.error("$debugLabel Unrecoverable: ${MediaUtil.truncate(stderr)}.")
         }
         state.set(PlaybackState.ERROR)
-        displayScreen.errored = true
+        displayScreen.mediaError = DreamMediaException.Decode("Unrecoverable stream failure", isFatal = true)
     }
 
     /**

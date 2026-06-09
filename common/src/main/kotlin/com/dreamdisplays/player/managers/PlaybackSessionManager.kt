@@ -1,6 +1,7 @@
 package com.dreamdisplays.player.managers
 
 import com.dreamdisplays.ffmpeg.FFmpegBinary
+import com.dreamdisplays.media.api.DreamMediaException
 import com.dreamdisplays.player.events.PlayerEvents
 import com.dreamdisplays.player.pipeline.AudioSink
 import com.dreamdisplays.player.pipeline.PlaybackClock
@@ -92,7 +93,7 @@ internal class PlaybackSessionManager(
 
         val ffmpeg = FFmpegBinary.getPath() ?: run {
             logger.error("$debugLabel FFmpeg binary not available.")
-            events.onError(); return
+            events.onError(DreamMediaException.Decode("FFmpeg binary not available", isFatal = true)); return
         }
         clock.reset(offsetNanos)
 
@@ -119,7 +120,7 @@ internal class PlaybackSessionManager(
             isPlaying = true
         } catch (e: IOException) {
             logger.error("$debugLabel Failed to start FFmpeg", e)
-            events.onError()
+            events.onError(DreamMediaException.Decode("Failed to start FFmpeg: ${e.message}", e))
         }
     }
 
