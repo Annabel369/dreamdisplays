@@ -1,6 +1,8 @@
 package com.dreamdisplays.client.ui
 
 import com.dreamdisplays.Initializer
+import com.dreamdisplays.api.DisplayId
+import com.dreamdisplays.client.overlay.OverlayBounds
 import com.dreamdisplays.display.DisplayScreen
 import com.dreamdisplays.render.AsyncTextureUploader
 import com.dreamdisplays.render.TextureUploadUtil
@@ -123,6 +125,18 @@ class PipOverlay(
 
     val isFinished: Boolean get() = closing && animProgress < 0.01f
     val isDragging: Boolean get() = dragging
+
+    /** Stable identity usable with [OverlayManager] and [DisplayService] contracts. */
+    val displayId: DisplayId get() = DisplayId(displayScreen.uuid)
+
+    /** Current screen-space bounds, valid only after the first [render] call. */
+    val overlayBounds: OverlayBounds
+        get() = OverlayBounds(
+            x = lastPipX.toFloat(),
+            y = lastPipY.toFloat(),
+            width = lastPipW.toFloat(),
+            height = lastPipH.toFloat(),
+        )
 
     fun updateFrame(buf: ByteBuffer, w: Int, h: Int, aspect: Double) {
         val size = w * h * 3
