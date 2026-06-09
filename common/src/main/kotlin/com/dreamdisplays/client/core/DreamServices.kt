@@ -1,12 +1,18 @@
 package com.dreamdisplays.client.core
 
+import com.dreamdisplays.api.DefaultDisplayService
+import com.dreamdisplays.api.DefaultPlaybackService
+import com.dreamdisplays.api.DisplayService
+import com.dreamdisplays.api.PlaybackService
 import com.dreamdisplays.client.input.DisplayInteractionService
 import com.dreamdisplays.client.input.MinecraftDisplayInteractionService
 import com.dreamdisplays.client.overlay.OverlayManager
 import com.dreamdisplays.client.render.ClientRenderService
 import com.dreamdisplays.client.ui.PipOverlayManager
 import com.dreamdisplays.media.DefaultMediaResolverChain
+import com.dreamdisplays.media.DefaultStreamSelector
 import com.dreamdisplays.media.api.MediaResolverChain
+import com.dreamdisplays.media.api.StreamSelector
 import com.dreamdisplays.render.ScreenRenderer
 import com.dreamdisplays.ytdlp.NewPipeResolver
 import com.dreamdisplays.ytdlp.YtDlpResolver
@@ -45,8 +51,11 @@ object DreamServices {
             register(YtDlpResolver)
         }
         registry.register<MediaResolverChain>(resolverChain)
+        registry.register<StreamSelector>(DefaultStreamSelector())
         registry.register<OverlayManager>(PipOverlayManager)
         registry.register<DisplayInteractionService>(MinecraftDisplayInteractionService)
         registry.register<ClientRenderService>(ScreenRenderer)
+        registry.register<DisplayService>(DefaultDisplayService())
+        registry.register<PlaybackService>(DefaultPlaybackService())
     }
 }
