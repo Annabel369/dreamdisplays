@@ -6,6 +6,7 @@ package com.dreamdisplays.client.core
  * @since 1.8.0
  */
 interface ClientApplication {
+    /** Context for the application, providing access to state, services, and platform APIs. */
     val context: ClientContext
 
     /** Registers a module with the application. Modules will be installed in the order they are registered. */

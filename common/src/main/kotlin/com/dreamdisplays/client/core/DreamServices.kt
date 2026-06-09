@@ -46,14 +46,18 @@ import com.dreamdisplays.ytdlp.YtDlpResolver
  * call [registry].`get<MediaResolverChain>()` instead of touching the concrete resolver objects.
  * [bootstrap] wires the default service graph and is idempotent, so it is safe to call from each
  * platform's startup path.
+ *
+ * @since 1.8.0
  */
 object DreamServices {
-
     /** The shared registry. Services are populated by [bootstrap]. */
     val registry: ServiceRegistry = DefaultServiceRegistry()
 
-    @Volatile
-    private var bootstrapped = false
+    /**
+     * Whether [bootstrap] has been called already. Guards against double registration of services, which can cause
+     * issues if services have internal state or are expected to be singletons.
+     */
+    @Volatile private var bootstrapped = false
 
     /**
      * Registers the default service graph exactly once.
@@ -75,8 +79,7 @@ object DreamServices {
      * when present, [com.dreamdisplays.managers.ClientStartupManager] hosts a
      * [ClientApplication] on top of it.
      */
-    @Synchronized
-    fun bootstrap() {
+    @Synchronized fun bootstrap() {
         if (bootstrapped) return
         bootstrapped = true
 

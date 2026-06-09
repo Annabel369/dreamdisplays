@@ -8,6 +8,7 @@ import java.util.concurrent.ConcurrentHashMap
  * @since 1.8.0
  */
 class DefaultServiceRegistry : ServiceRegistry {
+    /** Map of contract types to service instances. */
     private val instances = ConcurrentHashMap<Class<*>, Any>()
 
     /** Registers [instance] under contract [type], replacing any previous binding for that type. */
