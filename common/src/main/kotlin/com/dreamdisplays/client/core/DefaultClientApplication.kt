@@ -6,30 +6,28 @@ import java.util.concurrent.CopyOnWriteArrayList
  * Default [ClientApplication]: a module host over a [ClientContext]. Modules are installed in
  * dependency order on [start]; lifecycle events fan out to external listeners (via [onEvent]) and
  * to every installed module's [ClientModule.onEvent].
+ *
+ * @since 1.8.0
  */
 class DefaultClientApplication(override val context: ClientContext) : ClientApplication {
-
     private val modules = LinkedHashMap<String, ClientModule>()
     private val installed = LinkedHashSet<String>()
     private val listeners = CopyOnWriteArrayList<(ClientLifecycleEvent) -> Unit>()
 
-    @Volatile
-    private var started = false
+    @Volatile private var started = false
 
     /**
      * Adds [module] to the application. Before [start] the install is deferred; after [start] the
      * module is installed immediately (its dependencies must already be installed).
      */
-    @Synchronized
-    override fun registerModule(module: ClientModule) {
+    @Synchronized override fun registerModule(module: ClientModule) {
         require(module.id !in modules) { "Module '${module.id}' is already registered." }
         modules[module.id] = module
         if (started) install(module)
     }
 
     /** Emits [ClientLifecycleEvent.Initializing], installs all modules in dependency order, then [ClientLifecycleEvent.Ready]. */
-    @Synchronized
-    override fun start() {
+    @Synchronized override fun start() {
         if (started) return
         started = true
         emit(ClientLifecycleEvent.Initializing)
@@ -38,8 +36,7 @@ class DefaultClientApplication(override val context: ClientContext) : ClientAppl
     }
 
     /** Emits [ClientLifecycleEvent.ShuttingDown]; modules stay registered for a possible restart. */
-    @Synchronized
-    override fun stop() {
+    @Synchronized override fun stop() {
         if (!started) return
         emit(ClientLifecycleEvent.ShuttingDown)
         started = false

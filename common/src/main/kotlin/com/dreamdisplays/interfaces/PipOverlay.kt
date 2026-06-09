@@ -22,52 +22,6 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.UUID
 
-enum class PipCorner { TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT }
-
-/** 8 magnetic snap zones around the screen edges. */
-// TODO: rewrite this class entirely in 1.9.0
-enum class PipAnchor {
-    TOP_LEFT, TOP_CENTER, TOP_RIGHT,
-    MIDDLE_LEFT, MIDDLE_RIGHT,
-    BOTTOM_LEFT, BOTTOM_CENTER, BOTTOM_RIGHT;
-
-    fun position(sw: Int, sh: Int, pw: Int, ph: Int, m: Int): Pair<Int, Int> = when (this) {
-        TOP_LEFT -> m to m
-        TOP_CENTER -> (sw / 2 - pw / 2) to m
-        TOP_RIGHT -> (sw - pw - m) to m
-        MIDDLE_LEFT -> m to (sh / 2 - ph / 2)
-        MIDDLE_RIGHT -> (sw - pw - m) to (sh / 2 - ph / 2)
-        BOTTOM_LEFT -> m to (sh - ph - m)
-        BOTTOM_CENTER -> (sw / 2 - pw / 2) to (sh - ph - m)
-        BOTTOM_RIGHT -> (sw - pw - m) to (sh - ph - m)
-    }
-
-    /**
-     * Returns (sx, sy) describing which corner of the PiP faces the screen center:
-     *  sx: -1 = handle on left of PiP, +1 = right, 0 = horizontal center
-     *  sy: -1 = top, +1 = bottom, 0 = vertical center
-     */
-    fun centerFacingCorner(): Pair<Int, Int> = when (this) {
-        TOP_LEFT -> 1 to 1
-        TOP_CENTER -> 0 to 1
-        TOP_RIGHT -> -1 to 1
-        MIDDLE_LEFT -> 1 to 0
-        MIDDLE_RIGHT -> -1 to 0
-        BOTTOM_LEFT -> 1 to -1
-        BOTTOM_CENTER -> 0 to -1
-        BOTTOM_RIGHT -> -1 to -1
-    }
-
-    companion object {
-        fun fromCorner(c: PipCorner): PipAnchor = when (c) {
-            PipCorner.TOP_LEFT -> TOP_LEFT
-            PipCorner.TOP_RIGHT -> TOP_RIGHT
-            PipCorner.BOTTOM_LEFT -> BOTTOM_LEFT
-            PipCorner.BOTTOM_RIGHT -> BOTTOM_RIGHT
-        }
-    }
-}
-
 /**
  * In-game Picture-in-Picture overlay for one display screen.
  *

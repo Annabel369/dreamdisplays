@@ -1,8 +1,24 @@
 package com.dreamdisplays.utils
 
-/** Facing directions for block placement and interaction. */
+/**
+ * Facing directions for block placement and interaction. The ordinal doubles as the wire byte (see
+ * [toPacket] / [fromPacket]), so the declaration order N/E/S/W is part of the protocol. Don't
+ * reorder.
+ *
+ * @since 1.0.0
+ */
 enum class FacingUtil {
-    NORTH, EAST, SOUTH, WEST;
+    /** Facing north (−Z). Wire byte 0. */
+    NORTH,
+
+    /** Facing east (+X). Wire byte 1. */
+    EAST,
+
+    /** Facing south (+Z). Wire byte 2. */
+    SOUTH,
+
+    /** Facing west (−X). Wire byte 3. */
+    WEST;
 
     /** Serializes this facing to a single byte using its ordinal index. */
     fun toPacket(): Byte = ordinal.toByte()
