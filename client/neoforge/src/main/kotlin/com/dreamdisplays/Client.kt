@@ -2,7 +2,7 @@ package com.dreamdisplays
 
 import com.dreamdisplays.client.core.DreamServices
 import com.dreamdisplays.client.core.register
-import com.dreamdisplays.displays.DisplayManager
+import com.dreamdisplays.displays.DisplayRegistry
 import com.dreamdisplays.net.Packets
 import com.dreamdisplays.platform.NeoForgePlatform
 import com.dreamdisplays.platform.api.Platform
@@ -107,7 +107,7 @@ class Client(modEventBus: IEventBus) : com.dreamdisplays.Mod {
         )
         // Render popout windows after all Minecraft/mod rendering is submitted,
         // so any GL-context switch (macOS GLFW backend) does not disturb in-flight commands.
-        DisplayManager.getScreens().forEach { it.renderPopout() }
+        DisplayRegistry.getScreens().forEach { it.renderPopout() }
     }
     override fun sendPacket(packet: CustomPacketPayload) {
         Minecraft.getInstance().connection?.send(packet)

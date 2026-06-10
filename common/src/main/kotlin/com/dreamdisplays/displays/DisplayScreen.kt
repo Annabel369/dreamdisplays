@@ -155,7 +155,7 @@ class DisplayScreen(
 
         this.videoUrl = videoUrl
         this.lang = lang
-        DisplayManager.emit(DisplayEvent.UrlChanged(DisplayId(uuid), videoUrl))
+        DisplayRegistry.emit(DisplayEvent.UrlChanged(DisplayId(uuid), videoUrl))
         val shouldBePaused = preservePausedState && paused
         val newPlayer = MediaPlayer(videoUrl, lang, this)
         mediaPlayer = newPlayer

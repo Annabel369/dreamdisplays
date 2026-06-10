@@ -9,7 +9,7 @@ import com.dreamdisplays.client.core.DefaultClientContext
 import com.dreamdisplays.client.core.DreamServices
 import com.dreamdisplays.client.core.getOrNull
 import com.dreamdisplays.client.core.register
-import com.dreamdisplays.displays.DisplayManager
+import com.dreamdisplays.displays.DisplayRegistry
 import com.dreamdisplays.platform.api.Platform
 import com.dreamdisplays.displays.DisplayScreen
 import com.dreamdisplays.displays.store.DisplayStorage
@@ -28,7 +28,7 @@ object ClientStartupManager {
     val qualityRefreshThread: Thread = Thread({
         var running = true
         while (running) {
-            DisplayManager.getScreens().forEach(DisplayScreen::reloadQuality)
+            DisplayRegistry.getScreens().forEach(DisplayScreen::reloadQuality)
             try {
                 Thread.sleep(2500)
             } catch (_: InterruptedException) {

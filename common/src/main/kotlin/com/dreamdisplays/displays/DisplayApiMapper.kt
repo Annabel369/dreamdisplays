@@ -9,7 +9,7 @@ import com.dreamdisplays.displays.store.FullDisplayData
 
 /**
  * Mapping between the internal mutable [DisplayScreen] and the immutable public API / persistence types
- * ([Display], [DisplayRuntimeState], [FullDisplayData]). Kept separate from [DisplayManager] so the manager
+ * ([Display], [DisplayRuntimeState], [FullDisplayData]). Kept separate from [DisplayRegistry] so the manager
  * stays focused on registry and event concerns.
  */
 

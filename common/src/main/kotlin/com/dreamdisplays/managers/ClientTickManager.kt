@@ -13,7 +13,7 @@ import com.dreamdisplays.client.input.InputAction
 import com.dreamdisplays.client.input.InputHandler
 import com.dreamdisplays.client.input.KeyBindingRegistry
 import com.dreamdisplays.client.overlay.OverlayManager
-import com.dreamdisplays.displays.DisplayManager
+import com.dreamdisplays.displays.DisplayRegistry
 import com.dreamdisplays.displays.DisplayScreen
 import net.minecraft.client.Minecraft
 import net.minecraft.client.multiplayer.ClientLevel
@@ -48,7 +48,7 @@ object ClientTickManager {
             }
             if (level !== lastLevel) {
                 lastLevel = level
-                DisplayManager.unloadAll()
+                DisplayRegistry.unloadAll()
                 DreamServices.registry.getOrNull<OverlayManager>()?.closeAll()
                 hoveredDisplayScreen = null
                 checkVersionAndSendPacket()
@@ -57,7 +57,7 @@ object ClientTickManager {
         } else {
             if (wasInMultiplayer) {
                 wasInMultiplayer = false
-                DisplayManager.unloadAll()
+                DisplayRegistry.unloadAll()
                 DreamServices.registry.getOrNull<OverlayManager>()?.closeAll()
                 hoveredDisplayScreen = null
                 lastLevel = null
@@ -76,16 +76,16 @@ object ClientTickManager {
         val playerPos = player.blockPosition()
 
         unloadCheckTick++
-        if (unloadCheckTick >= 10 && ClientStateManager.displaysEnabled && DisplayManager.unloadedScreens.isNotEmpty()) {
+        if (unloadCheckTick >= 10 && ClientStateManager.displaysEnabled && DisplayRegistry.unloadedScreens.isNotEmpty()) {
             unloadCheckTick = 0
             DisplayLifecycleManager.restoreVisibleUnloadedScreens(playerPos)
         }
 
-        for (displayScreen in DisplayManager.getScreens()) {
+        for (displayScreen in DisplayRegistry.getScreens()) {
             val outOfRange = displayScreen.renderDistance < displayScreen.getDistanceToScreen(playerPos)
             if ((outOfRange || !ClientStateManager.displaysEnabled) && !displayScreen.isPopoutActive) {
-                DisplayManager.saveScreenData(displayScreen)
-                DisplayManager.unregisterScreen(displayScreen)
+                DisplayRegistry.saveScreenData(displayScreen)
+                DisplayRegistry.unregisterScreen(displayScreen)
                 if (hoveredDisplayScreen === displayScreen) {
                     hoveredDisplayScreen = null
                     ClientStateManager.isOnScreen = false

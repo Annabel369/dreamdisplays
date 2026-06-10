@@ -5,7 +5,7 @@ import com.dreamdisplays.client.overlay.Overlay
 import com.dreamdisplays.client.overlay.OverlayEvent
 import com.dreamdisplays.client.overlay.OverlayManager
 import com.dreamdisplays.client.overlay.OverlayRenderContext
-import com.dreamdisplays.displays.DisplayManager
+import com.dreamdisplays.displays.DisplayRegistry
 import com.dreamdisplays.displays.DisplayScreen
 import net.minecraft.client.Minecraft
 //? if >=26 {
@@ -76,7 +76,7 @@ object PipOverlayManager : OverlayManager {
      */
     override fun openPip(displayId: DisplayId): Overlay? {
         getOverlay(displayId)?.let { return it }
-        val screen = DisplayManager.screens[displayId.uuid] ?: return null
+        val screen = DisplayRegistry.screens[displayId.uuid] ?: return null
         val overlay = PipOverlay(screen)
         return if (add(overlay)) overlay else null
     }

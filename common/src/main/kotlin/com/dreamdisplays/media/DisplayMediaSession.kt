@@ -3,7 +3,7 @@ package com.dreamdisplays.media
 import com.dreamdisplays.api.DisplayEvent
 import com.dreamdisplays.api.DisplayId
 import com.dreamdisplays.api.DisplayRuntimeState
-import com.dreamdisplays.displays.DisplayManager
+import com.dreamdisplays.displays.DisplayRegistry
 import com.dreamdisplays.displays.DisplayScreen
 import com.dreamdisplays.media.api.MediaMetadata
 import com.dreamdisplays.media.api.MediaSession
@@ -15,7 +15,7 @@ import kotlin.time.Duration.Companion.nanoseconds
 
 /**
  * [MediaSession] view onto a live [DisplayScreen]. Transport calls delegate to the screen's
- * public playback API; events are translated from the [DisplayManager] event bus, filtered to
+ * public playback API; events are translated from the [DisplayRegistry] event bus, filtered to
  * this display. Closing the session only detaches listeners. Playback is unaffected.
  */
 internal class DisplayMediaSession(private val screen: DisplayScreen) : MediaSession {
@@ -62,7 +62,7 @@ internal class DisplayMediaSession(private val screen: DisplayScreen) : MediaSes
      * Close the returned handle (or the whole session) to unsubscribe.
      */
     override fun on(listener: (MediaSessionEvent) -> Unit): AutoCloseable {
-        val handle = DisplayManager.addListener { event ->
+        val handle = DisplayRegistry.addListener { event ->
             if (event.displayId != displayId) return@addListener
             event.toSessionEvent()?.let(listener)
         }

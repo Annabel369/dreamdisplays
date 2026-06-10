@@ -1,7 +1,7 @@
 package com.dreamdisplays.managers
 
 import com.dreamdisplays.api.DisplayFacing
-import com.dreamdisplays.displays.DisplayManager
+import com.dreamdisplays.displays.DisplayRegistry
 import com.dreamdisplays.displays.DisplayScreen
 import com.dreamdisplays.displays.store.DisplayStorage
 import com.dreamdisplays.displays.store.FullDisplayData
@@ -35,7 +35,7 @@ object DisplayLifecycleManager {
             return
         }
 
-        DisplayManager.screens[packet.uuid]?.let {
+        DisplayRegistry.screens[packet.uuid]?.let {
             it.updateData(packet)
             return
         }
@@ -51,7 +51,7 @@ object DisplayLifecycleManager {
         }
 
         DreamServices.registry.getOrNull<MediaResolverChain>()?.prefetch(MediaSource.from(packet.url))
-        DisplayManager.unloadedScreens.remove(packet.uuid)
+        DisplayRegistry.unloadedScreens.remove(packet.uuid)
 
         createScreen(
             packet.uuid, packet.ownerUuid, packet.pos, packet.facingUtil,
@@ -72,16 +72,16 @@ object DisplayLifecycleManager {
         displayScreen.renderDistance = savedData?.renderDistance ?: ClientStateManager.config.defaultDistance
 
         displayScreen.createTexture()
-        DisplayManager.registerScreen(displayScreen)
+        DisplayRegistry.registerScreen(displayScreen)
         if (code != "") displayScreen.loadVideo(code, lang)
     }
 
     fun restoreVisibleUnloadedScreens(playerPos: BlockPos) {
-        DisplayManager.unloadedScreens.values
+        DisplayRegistry.unloadedScreens.values
             .filter { it.videoUrl.isNotEmpty() && distanceToData(it, playerPos) <= it.renderDistance }
             .toList()
             .forEach { data ->
-                DisplayManager.unloadedScreens.remove(data.uuid)
+                DisplayRegistry.unloadedScreens.remove(data.uuid)
                 restoreScreen(data)
             }
     }
@@ -105,7 +105,7 @@ object DisplayLifecycleManager {
         displayScreen.muted = data.muted
 
         displayScreen.createTexture()
-        DisplayManager.screens[displayScreen.uuid] = displayScreen
+        DisplayRegistry.screens[displayScreen.uuid] = displayScreen
 
         if (data.videoUrl.isNotEmpty()) {
             displayScreen.loadVideo(data.videoUrl, data.lang)

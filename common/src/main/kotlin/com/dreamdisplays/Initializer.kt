@@ -6,7 +6,7 @@ import com.dreamdisplays.client.core.DreamServices
 import com.dreamdisplays.client.core.getOrNull
 import com.dreamdisplays.client.overlay.OverlayManager
 import com.dreamdisplays.client.ui.MinecraftOverlayRenderContext
-import com.dreamdisplays.displays.DisplayManager
+import com.dreamdisplays.displays.DisplayRegistry
 import com.dreamdisplays.managers.ClientPacketManager
 import com.dreamdisplays.managers.ClientStateManager
 import com.dreamdisplays.managers.ClientShutdownManager
@@ -50,7 +50,7 @@ object Initializer {
      */
     fun onServerJoined(serverId: String) {
         ClientStateManager.connectedServerId = serverId
-        DisplayManager.loadScreensForServer(serverId)
+        DisplayRegistry.loadScreensForServer(serverId)
         DreamServices.registry.getOrNull<ClientApplication>()
             ?.emit(ClientLifecycleEvent.ServerJoined(serverId))
     }
@@ -61,8 +61,8 @@ object Initializer {
      */
     fun onServerLeft() {
         val serverId = ClientStateManager.connectedServerId
-        DisplayManager.saveAllScreens()
-        DisplayManager.unloadAll()
+        DisplayRegistry.saveAllScreens()
+        DisplayRegistry.unloadAll()
         ClientStateManager.isPremium = false
         ClientStateManager.isAdmin = false
         ClientStateManager.connectedServerId = null

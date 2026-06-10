@@ -4,7 +4,7 @@ import com.dreamdisplays.Mod
 import com.dreamdisplays.client.capabilities.CapabilityNegotiationService
 import com.dreamdisplays.client.core.DreamServices
 import com.dreamdisplays.client.core.getOrNull
-import com.dreamdisplays.displays.DisplayManager
+import com.dreamdisplays.displays.DisplayRegistry
 import com.dreamdisplays.displays.store.DisplayStorage
 import com.dreamdisplays.net.Packets
 import com.dreamdisplays.protocol.ServerCapabilities
@@ -35,12 +35,12 @@ object ClientPacketManager {
     }
 
     fun handleSync(packet: Packets.Sync) {
-        DisplayManager.screens[packet.uuid]?.updateData(packet)
+        DisplayRegistry.screens[packet.uuid]?.updateData(packet)
     }
 
     fun handleDelete(packet: Packets.Delete) {
-        DisplayManager.screens[packet.uuid]?.let { DisplayManager.unregisterScreen(it) }
-        DisplayManager.unloadedScreens.remove(packet.uuid)
+        DisplayRegistry.screens[packet.uuid]?.let { DisplayRegistry.unregisterScreen(it) }
+        DisplayRegistry.unloadedScreens.remove(packet.uuid)
         DisplayStorage.removeDisplay(packet.uuid)
         logger.info("Display deleted and removed from saved data: ${packet.uuid}.")
     }
@@ -67,7 +67,7 @@ object ClientPacketManager {
 
     fun handleClearCache(packet: Packets.ClearCache) {
         packet.displayUuids.forEach { uuid ->
-            DisplayManager.screens.remove(uuid)?.unregister()
+            DisplayRegistry.screens.remove(uuid)?.unregister()
             DisplayStorage.removeDisplay(uuid)
         }
     }

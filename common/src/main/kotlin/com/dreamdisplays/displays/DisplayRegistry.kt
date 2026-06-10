@@ -10,8 +10,8 @@ import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 
-/** Manager for all screen displays. */
-object DisplayManager {
+/** Central registry of all live [DisplayScreen]s and the event bus for their lifecycle changes. */
+object DisplayRegistry {
     val screens = ConcurrentHashMap<UUID, DisplayScreen>()
     val unloadedScreens = ConcurrentHashMap<UUID, FullDisplayData>()
 

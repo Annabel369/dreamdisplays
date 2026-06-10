@@ -2,7 +2,7 @@ package com.dreamdisplays.client.ui
 
 import com.dreamdisplays.Initializer
 import com.dreamdisplays.client.ui.widgets.*
-import com.dreamdisplays.displays.DisplayManager
+import com.dreamdisplays.displays.DisplayRegistry
 import com.dreamdisplays.displays.DisplayScreen
 import com.dreamdisplays.displays.store.DisplayStorage
 import com.dreamdisplays.managers.ClientStateManager
@@ -167,7 +167,7 @@ class DisplayMenu private constructor() : Screen(Component.translatable("dreamdi
 
             override fun applyValue() {
                 ds.renderDistance = (value * (128 - 24) + 24).toInt()
-                DisplayManager.saveScreenData(ds)
+                DisplayRegistry.saveScreenData(ds)
             }
         }
 
@@ -208,7 +208,7 @@ class DisplayMenu private constructor() : Screen(Component.translatable("dreamdi
                 it.value = (ClientStateManager.config.defaultDistance - 24) / (128 - 24).toDouble()
                 it.message = Component.literal("${ClientStateManager.config.defaultDistance} blocks")
             }
-            DisplayManager.saveScreenData(ds)
+            DisplayRegistry.saveScreenData(ds)
         }
         qualityReset = resetButton {
             ds.quality = VideoQuality.DEFAULT
@@ -287,7 +287,7 @@ class DisplayMenu private constructor() : Screen(Component.translatable("dreamdi
         ) {
             override fun onPress() {
                 DisplayStorage.removeDisplay(ds.uuid)
-                DisplayManager.unregisterScreen(ds)
+                DisplayRegistry.unregisterScreen(ds)
                 Initializer.sendPacket(Packets.Delete(ds.uuid))
                 onClose()
             }

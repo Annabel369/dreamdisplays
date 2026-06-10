@@ -3,7 +3,7 @@ package com.dreamdisplays.client.input
 import com.dreamdisplays.client.core.DreamServices
 import com.dreamdisplays.client.core.getOrNull
 import com.dreamdisplays.client.ui.DisplayMenu
-import com.dreamdisplays.displays.DisplayManager
+import com.dreamdisplays.displays.DisplayRegistry
 import net.minecraft.client.Minecraft
 import org.lwjgl.glfw.GLFW
 
@@ -26,7 +26,7 @@ class DisplayMenuInputHandler : InputHandler {
 
         val target = DreamServices.registry.getOrNull<DisplayInteractionService>()
             ?.getCurrentTarget() ?: return false
-        val screen = DisplayManager.screens[target.displayId.uuid] ?: return false
+        val screen = DisplayRegistry.screens[target.displayId.uuid] ?: return false
 
         DreamServices.registry.getOrNull<DisplayInteractionService>()
             ?.emit(DisplayInteraction.RightClicked(target.displayId))

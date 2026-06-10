@@ -4,14 +4,14 @@ import com.dreamdisplays.api.DisplayId
 import com.dreamdisplays.client.core.DreamServices
 import com.dreamdisplays.client.core.getOrNull
 import com.dreamdisplays.client.overlay.OverlayManager
-import com.dreamdisplays.displays.DisplayManager
+import com.dreamdisplays.displays.DisplayRegistry
 import com.dreamdisplays.media.api.VideoFrameSink
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * Global [PopoutManager] facade. Delegates per-display window and PiP operations to the
  * [com.dreamdisplays.managers.DisplayPopoutManager] embedded in each [com.dreamdisplays.displays.DisplayScreen]
- * (looked up via [DisplayManager]), and queries [OverlayManager] for PiP status.
+ * (looked up via [DisplayRegistry]), and queries [OverlayManager] for PiP status.
  *
  * Frame-sink wiring remains internal to [com.dreamdisplays.managers.DisplayPopoutManager]; [openWindow] and
  * [openPip] return null because the sink is set directly on the player, not surfaced here.
@@ -24,24 +24,24 @@ class DefaultPopoutManager : PopoutManager {
 
     /** Opens or focuses the detached window for [displayId]. Returns null, the sink is managed internally. */
     override fun openWindow(displayId: DisplayId, config: WindowConfig): VideoFrameSink? {
-        DisplayManager.screens[displayId.uuid]?.activateWindowMode()
+        DisplayRegistry.screens[displayId.uuid]?.activateWindowMode()
         return null
     }
 
     /** Opens the in-game PiP overlay for [displayId]. Returns null, the sink is managed internally. */
     override fun openPip(displayId: DisplayId): VideoFrameSink? {
-        DisplayManager.screens[displayId.uuid]?.activatePipMode()
+        DisplayRegistry.screens[displayId.uuid]?.activatePipMode()
         return null
     }
 
     /** Closes whichever popout mode is active for [displayId]. */
     override fun close(displayId: DisplayId) {
-        DisplayManager.screens[displayId.uuid]?.deactivatePopout()
+        DisplayRegistry.screens[displayId.uuid]?.deactivatePopout()
     }
 
     /** Deactivates all popouts on all loaded displays, then triggers a full [OverlayManager.closeAll]. */
     override fun closeAll() {
-        DisplayManager.getScreens().forEach { it.deactivatePopout() }
+        DisplayRegistry.getScreens().forEach { it.deactivatePopout() }
         DreamServices.registry.getOrNull<OverlayManager>()?.closeAll()
     }
 
@@ -50,7 +50,7 @@ class DefaultPopoutManager : PopoutManager {
      * is registered with the [OverlayManager]".
      */
     override fun isWindowOpen(displayId: DisplayId): Boolean {
-        val screen = DisplayManager.screens[displayId.uuid] ?: return false
+        val screen = DisplayRegistry.screens[displayId.uuid] ?: return false
         return screen.isPopoutActive && !isPipOpen(displayId)
     }
 

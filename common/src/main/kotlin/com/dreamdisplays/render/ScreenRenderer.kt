@@ -6,7 +6,7 @@ import com.dreamdisplays.client.core.getOrNull
 import com.dreamdisplays.client.render.ClientRenderService
 import com.dreamdisplays.client.render.DisplayRenderEntry
 import com.dreamdisplays.client.render.RenderHook
-import com.dreamdisplays.displays.DisplayManager
+import com.dreamdisplays.displays.DisplayRegistry
 import com.dreamdisplays.displays.DisplayScreen
 import com.dreamdisplays.render.api.RenderContext
 import com.dreamdisplays.render.api.TextureHandle
@@ -39,14 +39,14 @@ object ScreenRenderer : ClientRenderService {
         render(ctx.stack, ctx.camera)
     }
 
-    /** No-op: live screens are created by [DisplayManager] from network packets, not flat entries. */
+    /** No-op: live screens are created by [DisplayRegistry] from network packets, not flat entries. */
     override fun registerDisplay(entry: DisplayRenderEntry) = Unit
 
-    /** Unregisters the live screen matching [displayId], delegating to [DisplayManager]. */
+    /** Unregisters the live screen matching [displayId], delegating to [DisplayRegistry]. */
     override fun unregisterDisplay(displayId: DisplayId) {
-        DisplayManager.getScreens()
+        DisplayRegistry.getScreens()
             .firstOrNull { it.uuid == displayId.uuid }
-            ?.let { DisplayManager.unregisterScreen(it) }
+            ?.let { DisplayRegistry.unregisterScreen(it) }
     }
 
     /** No-op: each [DisplayScreen] owns its own GPU texture lifecycle in the current model. */
@@ -54,12 +54,12 @@ object ScreenRenderer : ClientRenderService {
 
     /** Number of live screens with an uploaded texture. Those this renderer will actually draw. */
     override val registeredCount: Int
-        get() = DisplayManager.getScreens().count { it.texture != null }
+        get() = DisplayRegistry.getScreens().count { it.texture != null }
 
     /** Iterates all registered screens and lets the caller submit quads through the active renderer. */
     fun render(stack: PoseStack, camera: Camera, drawQuad: QuadRenderer) {
         val cameraPos = camera.position()
-        for (displayScreen in DisplayManager.getScreens()) {
+        for (displayScreen in DisplayRegistry.getScreens()) {
             if (displayScreen.texture == null) continue
 
             stack.pushPose()

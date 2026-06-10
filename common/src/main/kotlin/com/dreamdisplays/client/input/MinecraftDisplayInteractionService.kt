@@ -1,14 +1,14 @@
 package com.dreamdisplays.client.input
 
 import com.dreamdisplays.api.DisplayId
-import com.dreamdisplays.displays.DisplayManager
+import com.dreamdisplays.displays.DisplayRegistry
 import com.dreamdisplays.utils.RayCastingUtil
 import net.minecraft.client.Minecraft
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * Minecraft-backed [DisplayInteractionService]. Composes the generic block raycaster
- * ([RayCastingUtil]) with [DisplayManager] to answer the display-aware question "what display is the
+ * ([RayCastingUtil]) with [DisplayRegistry] to answer the display-aware question "what display is the
  * player looking at?", and acts as the event bus for [DisplayInteraction]s.
  *
  * [RayCastingUtil] stays deliberately display-agnostic (it only knows blocks); the mapping from a
@@ -33,7 +33,7 @@ object MinecraftDisplayInteractionService : DisplayInteractionService {
         val mc = Minecraft.getInstance()
         val player = mc.player ?: return RaycastResult.Miss
         val hit = RayCastingUtil.rCBlock(MAX_REACH) ?: return RaycastResult.Miss
-        val screen = DisplayManager.getScreens().firstOrNull { it.isInScreen(hit.blockPos) }
+        val screen = DisplayRegistry.getScreens().firstOrNull { it.isInScreen(hit.blockPos) }
             ?: return RaycastResult.Miss
         val loc = hit.location
         val distanceSq = player.getEyePosition(1.0f).distanceToSqr(loc)
