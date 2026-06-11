@@ -10,7 +10,8 @@ import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 
 /**
- * Base class for Dream Displays screens. It does three things the old hand-rolled screens did not:
+ * Base class for Dream Displays screens. It handles the per-frame state sync, operates in virtual
+ * coordinates, and handles scaling to fit the real window.
  *
  * @since 1.0.0
  */
