@@ -14,8 +14,8 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking
-//? if >=26 {
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry
+//? if >=26 {
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents
 //?} else
@@ -84,14 +84,6 @@ class Client : ClientModInitializer, Mod {
             }
         }
 
-        HudElementRegistry.addLast(
-            Identifier.fromNamespaceAndPath(Initializer.MOD_ID, "pip_overlay")
-        ) { graphics, deltaTracker ->
-            Initializer.onRenderHud(
-                Minecraft.getInstance(), graphics,
-                deltaTracker.getGameTimeDeltaPartialTick(false)
-            )
-        }
         //?} else
         /*WorldRenderEvents.AFTER_ENTITIES.register { context ->
             val mc = Minecraft.getInstance()
@@ -100,6 +92,15 @@ class Client : ClientModInitializer, Mod {
                 DisplayRegistry.getScreens().forEach { it.renderPopout() }
             }
         }*/
+
+        HudElementRegistry.addLast(
+            Identifier.fromNamespaceAndPath(Initializer.MOD_ID, "pip_overlay")
+        ) { graphics, deltaTracker ->
+            Initializer.onRenderHud(
+                Minecraft.getInstance(), graphics,
+                deltaTracker.getGameTimeDeltaPartialTick(false)
+            )
+        }
 
         ClientTickEvents.END_CLIENT_TICK.register { Initializer.onEndTick(it) }
 

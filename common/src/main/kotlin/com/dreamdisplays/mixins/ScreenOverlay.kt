@@ -29,7 +29,7 @@ open class ScreenOverlay {
     open fun onRenderReturn(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float, ci: CallbackInfo) {
     //?} else
     /*@Inject(
-        method = ["render"],
+        method = ["renderWithTooltipAndSubtitles"],
         at = [At("RETURN")],
         require = 0
     )
