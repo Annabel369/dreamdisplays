@@ -131,7 +131,8 @@ import org.slf4j.LoggerFactory
         FabricPacketUtil.sendDisplayInfo(receivers, displayData)
     }
 
-    /** Registers all FROZEN v1 packet receivers for Fabric servers. */
+    /** Registers all frozen v1 packet receivers for Fabric servers. */
+    @Deprecated("Protocol v1 receivers; remove when v1 client support is dropped.")
     fun registerReceivers() {
         ServerPlayNetworking.registerGlobalReceiver(Packets.Version.PACKET_ID) { payload, context ->
             val player = context.player()

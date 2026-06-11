@@ -19,6 +19,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload
  * Outgoing v2 packets degrade to their v1 equivalent for old servers; incoming v1 payloads are
  * lifted into v2 types so the business logic exists once.
  */
+@Deprecated("Protocol v1 adapter; remove along with Packets when v1 client support is dropped.")
 object LegacyAdapter {
 
     /** Maps an outgoing v2 [packet] to its frozen-v1 payload for servers without v2. */

@@ -19,6 +19,7 @@ import java.util.*
  * plugin messages from pre-v2 clients and delegates to the shared [DisplayActions] logic.
  * New packets go to the v2 channel handled by [PaperV2Networking].
  */
+@Deprecated("Protocol v1 receiver; remove when v1 client support is dropped.")
 @PaperOnly @NullMarked class PacketReceiver(private val plugin: Main) : PluginMessageListener {
     private val logger = LoggerFactory.getLogger("DreamDisplays/PacketReceiver")
     private val maxVersionBytes = 128

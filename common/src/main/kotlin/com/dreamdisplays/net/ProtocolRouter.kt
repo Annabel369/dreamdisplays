@@ -44,6 +44,7 @@ object ProtocolRouter {
     }
 
     /** Dispatches a packet adapted from a frozen-v1 payload; never flips the v2 switch. */
+    @Deprecated("Protocol v1 dispatch path; remove when v1 client support is dropped.")
     fun onLegacyReceived(packet: DreamPacket) {
         ClientPacketManager.handle(packet)
     }

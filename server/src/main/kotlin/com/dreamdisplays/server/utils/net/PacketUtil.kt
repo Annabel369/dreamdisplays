@@ -137,11 +137,13 @@ import java.util.*
     }
 
     /** Notifies [player] whether they currently have premium permissions. */
+    @Deprecated("Protocol v1 only; v2 bundles these flags in ServerHello. Remove when v1 support is dropped.")
     fun sendPremium(player: Player, isPremium: Boolean) {
         sendBooleanPacket(player, CHANNEL_PREMIUM, isPremium)
     }
 
     /** Notifies [player] whether they are recognized as an admin (for delete privileges). */
+    @Deprecated("Protocol v1 only; v2 bundles these flags in ServerHello. Remove when v1 support is dropped.")
     fun sendIsAdmin(player: Player, isAdmin: Boolean) {
         sendBooleanPacket(player, CHANNEL_IS_ADMIN, isAdmin)
     }
@@ -156,6 +158,7 @@ import java.util.*
     }
 
     /** Tells the client whether the report feature is enabled (i.e., a webhook is configured). */
+    @Deprecated("Protocol v1 only; v2 bundles these flags in ServerHello. Remove when v1 support is dropped.")
     fun sendReportEnabled(player: Player, isEnabled: Boolean) {
         sendBooleanPacket(player, CHANNEL_REPORT_ENABLED, isEnabled)
     }
@@ -372,11 +375,13 @@ import java.util.*
     }
 
     /** Notifies [player] whether they currently have premium permissions. */
+    @Deprecated("Protocol v1 only; v2 bundles these flags in ServerHello. Remove when v1 support is dropped.")
     fun sendPremium(player: ServerPlayer, isPremium: Boolean) {
         runCatching { ServerPlayNetworking.send(player, Packets.Premium(isPremium)) }
     }
 
     /** Notifies [player] whether they are recognized as an admin (for delete privileges). */
+    @Deprecated("Protocol v1 only; v2 bundles these flags in ServerHello. Remove when v1 support is dropped.")
     fun sendIsAdmin(player: ServerPlayer, isAdmin: Boolean) {
         runCatching { ServerPlayNetworking.send(player, Packets.IsAdmin(isAdmin)) }
     }
@@ -391,6 +396,7 @@ import java.util.*
     }
 
     /** Tells the client whether the report feature is enabled (i.e., a webhook is configured). */
+    @Deprecated("Protocol v1 only; v2 bundles these flags in ServerHello. Remove when v1 support is dropped.")
     fun sendReportEnabled(player: ServerPlayer, isEnabled: Boolean) {
         runCatching { ServerPlayNetworking.send(player, Packets.ReportEnabled(isEnabled)) }
     }
