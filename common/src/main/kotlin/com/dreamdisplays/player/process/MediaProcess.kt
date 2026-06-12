@@ -12,6 +12,21 @@ object MediaProcess {
     private const val USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
             "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
+    /** Wire format the video `FFmpeg` process writes to its stdout pipe. */
+    enum class VideoTransport {
+        /** PPM frames (header + RGB24), parsed by the JVM [com.dreamdisplays.player.pipeline.VideoFramePipe]. */
+        PPM,
+
+        /** Headerless RGB24 rawvideo, consumed by the native pipeline. */
+        RAW_RGB24,
+
+        /**
+         * Headerless NV12 rawvideo, consumed by the native pipeline. Halves pipe traffic vs.
+         * RGB24; the stream is pinned to BT.709 so the native converter can use a fixed matrix.
+         */
+        RAW_NV12,
+    }
+
     /**
      * Builds an `FFmpeg` process to read video frames from [url] at the given [offsetNanos], scaled and cropped to [w] x [h].
      *
@@ -22,20 +37,29 @@ object MediaProcess {
      * @throws IOException if the process fails to start. the caller is responsible for destroying the process when done.
      */
     @Throws(IOException::class)
-    fun buildVideo(ffmpeg: String, url: String, w: Int, h: Int, offsetNanos: Long, hwAccel: HwAccelBackend): Process {
+    fun buildVideo(ffmpeg: String, url: String, w: Int, h: Int, offsetNanos: Long, hwAccel: HwAccelBackend): Process =
+        ProcessBuilder(videoArgs(ffmpeg, url, w, h, offsetNanos, hwAccel, VideoTransport.PPM)).start()
+
+    /**
+     * Builds the full `FFmpeg` argv for a video session emitting [transport] on stdout.
+     * Used directly by the native pipeline (which spawns the process itself) and by [buildVideo].
+     */
+    fun videoArgs(
+        ffmpeg: String, url: String, w: Int, h: Int, offsetNanos: Long, hwAccel: HwAccelBackend,
+        transport: VideoTransport,
+    ): List<String> {
         val swPrefix = if (hwAccel.hwOutputFormat != null) "hwdownload,format=nv12," else ""
-        val vf = "${swPrefix}scale=w=$w:h=$h:force_original_aspect_ratio=decrease:flags=bilinear," +
-            "pad=w=$w:h=$h:x=(ow-iw)/2:y=(oh-ih)/2:color=black,setsar=1,format=rgb24"
-        val cmd = baseCommand(ffmpeg, url, offsetNanos, hwAccel).apply {
-            addAll(
-                listOf(
-                    "-an",
-                    "-vf", vf,
-                    "-f", "image2pipe", "-c:v", "ppm", "-",
-                )
-            )
+        val scaleExtra = if (transport == VideoTransport.RAW_NV12) ":out_color_matrix=bt709" else ""
+        val outFormat = if (transport == VideoTransport.RAW_NV12) "nv12" else "rgb24"
+        val vf = "${swPrefix}scale=w=$w:h=$h:force_original_aspect_ratio=decrease:flags=bilinear$scaleExtra," +
+            "pad=w=$w:h=$h:x=(ow-iw)/2:y=(oh-ih)/2:color=black,setsar=1,format=$outFormat"
+        return baseCommand(ffmpeg, url, offsetNanos, hwAccel).apply {
+            addAll(listOf("-an", "-vf", vf))
+            when (transport) {
+                VideoTransport.PPM -> addAll(listOf("-f", "image2pipe", "-c:v", "ppm", "-"))
+                VideoTransport.RAW_RGB24, VideoTransport.RAW_NV12 -> addAll(listOf("-f", "rawvideo", "-"))
+            }
         }
-        return ProcessBuilder(cmd).start()
     }
 
     /**
