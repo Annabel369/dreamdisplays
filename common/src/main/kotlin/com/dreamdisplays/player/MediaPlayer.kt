@@ -20,6 +20,7 @@ import com.dreamdisplays.media.api.MediaStream
 import com.dreamdisplays.media.api.VideoQuality
 import com.dreamdisplays.ytdlp.YtDlp
 import com.mojang.blaze3d.textures.GpuTexture
+import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
 import org.slf4j.LoggerFactory
 import java.nio.ByteBuffer
@@ -410,7 +411,12 @@ class MediaPlayer(
         streams = newSs
         lastQuality = MediaStreamSelector.parseQuality(newSs.currentVideo)
         displayScreen.videoContentAspect = newSs.currentVideo.contentAspect()
-        if (sessionManager.isPlaying) startStreams(newSs, pos) else clock.seekOffsetNanos = pos
+        Minecraft.getInstance().execute {
+            displayScreen.reloadTexture()
+            safeExecute {
+                if (sessionManager.isPlaying) startStreams(newSs, pos) else clock.seekOffsetNanos = pos
+            }
+        }
     }
 
     private fun MediaStream.contentAspect(): Double {
