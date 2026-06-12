@@ -7,8 +7,8 @@ Panama (yes, we would better drop support for natives on Java 21 or earlier than
 
 ```sh
 cd native
-cargo build --release    # Produces target/release/<lib>dreamdisplays_native.<dylib|so|dll>
-cargo test               # Color conversion + LUT correctness tests, and etc.
+cargo build --release
+cargo test
 ```
 
 If `native/target/release/` contains the library when the mod jars are built, Gradle bundles it into the jar at

@@ -1,4 +1,4 @@
-//! End-to-end smoke test against a real FFmpeg binary: spawns `testsrc`, reads frames
+//! End-to-end smoke test against a real `FFmpeg` binary: spawns `testsrc`, reads frames
 //! through the session machinery, and checks EOF + exit-code handling.
 //!
 //! Skips (passes trivially) when no FFmpeg binary is available. Point `DD_TEST_FFMPEG`
@@ -26,7 +26,7 @@ fn find_ffmpeg() -> Option<String> {
 
 fn run_pipe(pix: PixFmt, vf: &str, frames: u32) {
     let Some(ffmpeg) = find_ffmpeg() else {
-        eprintln!("skipping: no ffmpeg binary found");
+        eprintln!("Skipping: no FFmpeg binary found.");
         return;
     };
     let (w, h) = (64u32, 48u32);
@@ -51,7 +51,7 @@ fn run_pipe(pix: PixFmt, vf: &str, frames: u32) {
 
     let sessions = Sessions::new();
     let handle = sessions.open(&args, w, h, pix);
-    assert_ne!(handle, 0, "ffmpeg failed to spawn");
+    assert_ne!(handle, 0, "Ffmpeg failed to spawn.");
 
     let mut dst = vec![0u8; (w * h * 3) as usize];
     let mut got = 0u32;
@@ -86,7 +86,7 @@ fn rgb24_pipe_end_to_end() {
 #[test]
 fn kill_unblocks_reader() {
     let Some(ffmpeg) = find_ffmpeg() else {
-        eprintln!("skipping: no ffmpeg binary found");
+        eprintln!("Skipping: no FFmpeg binary found.");
         return;
     };
     // Infinite source: the reader would block forever unless kill() unblocks it.
@@ -126,6 +126,6 @@ fn kill_unblocks_reader() {
 
     std::thread::sleep(std::time::Duration::from_millis(300));
     sessions.kill(handle);
-    reader.join().expect("reader thread must terminate after kill()");
+    reader.join().expect("Reader thread must terminate after kill().");
     sessions.close(handle);
 }
