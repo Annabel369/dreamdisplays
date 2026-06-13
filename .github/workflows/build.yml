@@ -62,7 +62,6 @@ jobs:
                   "target": "x86_64-unknown-linux-gnu",
                   "native_library": "libdreamdisplays_native.so",
                   "lav_library": "libdreamdisplays_lav.so",
-                  "vcpkg_triplet": "",
               },
               {
                   "platform": "linux-aarch64",
@@ -70,7 +69,6 @@ jobs:
                   "target": "aarch64-unknown-linux-gnu",
                   "native_library": "libdreamdisplays_native.so",
                   "lav_library": "libdreamdisplays_lav.so",
-                  "vcpkg_triplet": "",
               },
               {
                   "platform": "macos-x64",
@@ -78,7 +76,6 @@ jobs:
                   "target": "x86_64-apple-darwin",
                   "native_library": "libdreamdisplays_native.dylib",
                   "lav_library": "libdreamdisplays_lav.dylib",
-                  "vcpkg_triplet": "",
               },
               {
                   "platform": "macos-aarch64",
@@ -86,7 +83,6 @@ jobs:
                   "target": "aarch64-apple-darwin",
                   "native_library": "libdreamdisplays_native.dylib",
                   "lav_library": "libdreamdisplays_lav.dylib",
-                  "vcpkg_triplet": "",
               },
               {
                   "platform": "windows-x64",
@@ -94,7 +90,6 @@ jobs:
                   "target": "x86_64-pc-windows-msvc",
                   "native_library": "dreamdisplays_native.dll",
                   "lav_library": "dreamdisplays_lav.dll",
-                  "vcpkg_triplet": "x64-windows",
               },
               {
                   "platform": "windows-aarch64",
@@ -102,7 +97,6 @@ jobs:
                   "target": "aarch64-pc-windows-msvc",
                   "native_library": "dreamdisplays_native.dll",
                   "lav_library": "dreamdisplays_lav.dll",
-                  "vcpkg_triplet": "arm64-windows",
               },
           ]
           is_pull_request = os.environ.get("GITHUB_EVENT_NAME") == "pull_request"
@@ -204,24 +198,31 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install ffmpeg pkg-config
 
-      - name: Cache vcpkg FFmpeg on Windows
-        if: runner.os == 'Windows'
-        uses: actions/cache@v5.0.5
-        with:
-          path: C:/vcpkg/installed
-          key: vcpkg-${{ matrix.native.vcpkg_triplet }}-ffmpeg-release-v1
-
       - name: Install FFmpeg dependencies on Windows
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          VCPKG_ROOT="${VCPKG_ROOT:-C:/vcpkg}"
-          triplet_file="$VCPKG_ROOT/triplets/${{ matrix.native.vcpkg_triplet }}.cmake"
-          grep -q 'VCPKG_BUILD_TYPE release' "$triplet_file" || \
-            echo 'set(VCPKG_BUILD_TYPE release)' >> "$triplet_file"
-          "$VCPKG_ROOT/vcpkg.exe" install "ffmpeg:${{ matrix.native.vcpkg_triplet }}"
-          echo "$VCPKG_ROOT/installed/${{ matrix.native.vcpkg_triplet }}/bin" >> "$GITHUB_PATH"
-          echo "$VCPKG_ROOT/installed/${{ matrix.native.vcpkg_triplet }}/tools/ffmpeg" >> "$GITHUB_PATH"
+          set -euo pipefail
+          # Use a prebuilt LGPL shared FFmpeg instead of compiling it from
+          # source via vcpkg (which took 10+ min per run). ffmpeg-sys-next picks
+          # it up through FFMPEG_DIR and runs bindgen against its headers, so any
+          # 8.x build works. BtbN publishes matching win64 / winarm64 archives.
+          case "${{ matrix.native.target }}" in
+            x86_64-*) ffmpeg_arch=win64 ;;
+            aarch64-*) ffmpeg_arch=winarm64 ;;
+            *) echo "Unsupported Windows target: ${{ matrix.native.target }}" >&2; exit 1 ;;
+          esac
+          build="ffmpeg-n8.0-latest-${ffmpeg_arch}-lgpl-shared"
+          url="https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/${build}.zip"
+          dest="${RUNNER_TEMP}/ffmpeg"
+
+          curl -fL --retry 3 --retry-all-errors -o "${RUNNER_TEMP}/ffmpeg.zip" "$url"
+          7z x -y "${RUNNER_TEMP}/ffmpeg.zip" -o"${RUNNER_TEMP}" >/dev/null
+          mv "${RUNNER_TEMP}/${build}" "$dest"
+
+          # Export for the build/test/collect steps below.
+          echo "FFMPEG_DIR=${dest}" >> "$GITHUB_ENV"
+          echo "${dest}/bin" >> "$GITHUB_PATH"
 
       - name: Build native libraries
         shell: bash
@@ -233,10 +234,6 @@ jobs:
             --package dreamdisplays-lav \
             --locked \
             --target "${{ matrix.native.target }}"
-        env:
-          VCPKG_ROOT: ${{ runner.os == 'Windows' && 'C:/vcpkg' || '' }}
-          VCPKGRS_DYNAMIC: ${{ runner.os == 'Windows' && '1' || '' }}
-          VCPKGRS_TRIPLET: ${{ matrix.native.vcpkg_triplet }}
 
       - name: Test native libraries
         shell: bash
@@ -248,10 +245,6 @@ jobs:
             --package dreamdisplays-lav \
             --locked \
             --target "${{ matrix.native.target }}"
-        env:
-          VCPKG_ROOT: ${{ runner.os == 'Windows' && 'C:/vcpkg' || '' }}
-          VCPKGRS_DYNAMIC: ${{ runner.os == 'Windows' && '1' || '' }}
-          VCPKGRS_TRIPLET: ${{ matrix.native.vcpkg_triplet }}
 
       - name: Collect native libraries
         shell: bash
@@ -262,7 +255,7 @@ jobs:
           target="${{ matrix.native.target }}"
           native_library="${{ matrix.native.native_library }}"
           lav_library="${{ matrix.native.lav_library }}"
-          vcpkg_triplet="${{ matrix.native.vcpkg_triplet }}"
+          ffmpeg_dir="${FFMPEG_DIR:-}"
 
           release_dir="native/target/$target/release"
           out="native-artifact/dreamdisplays-natives/$platform"
@@ -399,10 +392,9 @@ jobs:
           }
 
           collect_windows_dependencies() {
-            local root="${VCPKG_ROOT:-C:/vcpkg}"
-            local bin="$root/installed/$vcpkg_triplet/bin"
+            local bin="$ffmpeg_dir/bin"
             if [[ ! -d "$bin" ]]; then
-              echo "Missing vcpkg bin directory: $bin" >&2
+              echo "Missing FFmpeg bin directory: $bin" >&2
               exit 1
             fi
 
@@ -455,7 +447,10 @@ jobs:
             local license_dir="$out/licenses"
             mkdir -p "$license_dir"
 
-            if command -v ffmpeg >/dev/null 2>&1; then
+            # On Windows we bundle the prebuilt BtbN ffmpeg, so its license must
+            # come from that build's LICENSE below — never from a stray system
+            # ffmpeg on the runner image (a different build = wrong attribution).
+            if [[ "${RUNNER_OS:-}" != "Windows" ]] && command -v ffmpeg >/dev/null 2>&1; then
               ffmpeg -hide_banner -version > "$license_dir/ffmpeg-version.txt" 2>&1 || true
               ffmpeg -hide_banner -L > "$license_dir/ffmpeg-license.txt" 2>&1 || true
             fi
@@ -470,17 +465,17 @@ jobs:
                 fi
                 ;;
               Windows)
-                local root="${VCPKG_ROOT:-C:/vcpkg}"
-                cp "$root/installed/$vcpkg_triplet/share/ffmpeg/copyright" "$license_dir/ffmpeg-vcpkg-copyright.txt" 2>/dev/null || true
+                btbn_license="$(find "$ffmpeg_dir" -maxdepth 1 -iname 'LICENSE*' -type f | head -n 1)"
+                [[ -n "$btbn_license" ]] && cp "$btbn_license" "$license_dir/ffmpeg-btbn-license.txt" || true
                 ;;
             esac
 
-            # vcpkg builds the ffmpeg libraries without the CLI (--disable-ffmpeg),
-            # so `ffmpeg -L` is unavailable on Windows. Fall back to the port's
-            # bundled copyright file as the canonical license record.
+            # The prebuilt Windows ffmpeg ships no CLI, so `ffmpeg -L` is
+            # unavailable there. Fall back to the build's bundled LICENSE as the
+            # canonical license record.
             if [[ ! -s "$license_dir/ffmpeg-license.txt" ]]; then
               for fallback in \
-                "$license_dir/ffmpeg-vcpkg-copyright.txt" \
+                "$license_dir/ffmpeg-btbn-license.txt" \
                 "$license_dir/ffmpeg-debian-copyright.txt"; do
                 if [[ -s "$fallback" ]]; then
                   cp "$fallback" "$license_dir/ffmpeg-license.txt"
@@ -536,8 +531,6 @@ jobs:
 
           find "$out" -maxdepth 1 -type f -print | sort
           tar -cf "native-artifact/native-$platform.tar" -C "$out/.." "$platform"
-        env:
-          VCPKG_ROOT: ${{ runner.os == 'Windows' && 'C:/vcpkg' || '' }}
 
       - name: Upload native libraries
         uses: actions/upload-artifact@v7.0.1
