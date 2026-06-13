@@ -206,8 +206,15 @@ jobs:
             aarch64-*) ffmpeg_arch=linuxarm64 ;;
             *) echo "Unsupported Linux target: ${{ matrix.native.target }}" >&2; exit 1 ;;
           esac
-          build="ffmpeg-n8.1-latest-${ffmpeg_arch}-lgpl-shared-8.1"
-          url="https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/${build}.tar.xz"
+          python_bin="$(command -v python3 || command -v python || true)"
+          if [[ -z "$python_bin" ]]; then
+            echo "Python is required to resolve the latest BtbN FFmpeg asset." >&2
+            exit 1
+          fi
+          url="$(
+            curl -fsSL https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/latest |
+            FFMPEG_ARCH="$ffmpeg_arch" FFMPEG_EXT="tar.xz" "$python_bin" -c 'import json, os, re, sys; arch = os.environ["FFMPEG_ARCH"]; ext = os.environ["FFMPEG_EXT"]; pattern = re.compile(rf"^ffmpeg-n8\..*-{re.escape(arch)}-lgpl-shared-8\.1\.{re.escape(ext)}$"); url = next((asset["browser_download_url"] for asset in json.load(sys.stdin).get("assets", []) if pattern.match(asset.get("name", ""))), None); print(url) if url else sys.exit(f"No BtbN FFmpeg asset matched {pattern.pattern}")'
+          )"
           dest="${RUNNER_TEMP}/ffmpeg"
           curl -fL --retry 3 --retry-all-errors -o "${RUNNER_TEMP}/ffmpeg.tar.xz" "$url"
           mkdir -p "${RUNNER_TEMP}/ffmpeg-extract"
@@ -235,8 +242,15 @@ jobs:
             aarch64-*) ffmpeg_arch=winarm64 ;;
             *) echo "Unsupported Windows target: ${{ matrix.native.target }}" >&2; exit 1 ;;
           esac
-          build="ffmpeg-n8.1-latest-${ffmpeg_arch}-lgpl-shared-8.1"
-          url="https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/${build}.zip"
+          python_bin="$(command -v python3 || command -v python || true)"
+          if [[ -z "$python_bin" ]]; then
+            echo "Python is required to resolve the latest BtbN FFmpeg asset." >&2
+            exit 1
+          fi
+          url="$(
+            curl -fsSL https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/latest |
+            FFMPEG_ARCH="$ffmpeg_arch" FFMPEG_EXT="zip" "$python_bin" -c 'import json, os, re, sys; arch = os.environ["FFMPEG_ARCH"]; ext = os.environ["FFMPEG_EXT"]; pattern = re.compile(rf"^ffmpeg-n8\..*-{re.escape(arch)}-lgpl-shared-8\.1\.{re.escape(ext)}$"); url = next((asset["browser_download_url"] for asset in json.load(sys.stdin).get("assets", []) if pattern.match(asset.get("name", ""))), None); print(url) if url else sys.exit(f"No BtbN FFmpeg asset matched {pattern.pattern}")'
+          )"
           dest="${RUNNER_TEMP}/ffmpeg"
 
           curl -fL --retry 3 --retry-all-errors -o "${RUNNER_TEMP}/ffmpeg.zip" "$url"
