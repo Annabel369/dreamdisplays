@@ -43,9 +43,12 @@ abstract class UiWidget(message: Component) : AbstractWidget(0, 0, 0, 0, message
     protected open fun handlesWholeWidgetCursor(): Boolean = true
 
     //? if >=26 {
+    /** Requests the cursor for this widget's hovered state. Override for controls with special cursors. */
+    protected open fun requestWidgetCursor(g: GuiGraphicsExtractor) = handleCursor(g)
+
     final override fun extractWidgetRenderState(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
         draw(g, mouseX, mouseY, partialTick)
-        if (handlesWholeWidgetCursor()) handleCursor(g)
+        if (handlesWholeWidgetCursor()) requestWidgetCursor(g)
     }
 
     /** Draws [text] centered over the widget with vanilla scrolling-on-overflow behavior. */

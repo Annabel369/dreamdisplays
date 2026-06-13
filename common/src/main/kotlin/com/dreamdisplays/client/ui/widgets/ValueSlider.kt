@@ -2,8 +2,14 @@ package com.dreamdisplays.client.ui.widgets
 
 import com.dreamdisplays.client.ui.GuiGraphicsCompat
 import com.dreamdisplays.client.ui.kit.UiWidget
+//? if >=26 {
+import com.mojang.blaze3d.platform.cursor.CursorTypes
+//?}
 import net.minecraft.client.InputType
 import net.minecraft.client.Minecraft
+//? if >=26 {
+import net.minecraft.client.gui.GuiGraphicsExtractor
+//?}
 import net.minecraft.client.gui.narration.NarratedElementType
 import net.minecraft.client.gui.narration.NarrationElementOutput
 import net.minecraft.client.input.MouseButtonEvent
@@ -65,6 +71,12 @@ class ValueSlider(
         val color = if (active) 0xFFFFFF else 0xA0A0A0
         drawScrollingLabel(g, label(value).copy().withStyle { it.withColor(color) }, 2)
     }
+
+    //? if >=26 {
+    override fun requestWidgetCursor(g: GuiGraphicsExtractor) {
+        if (active && isHovered) g.requestCursor(CursorTypes.RESIZE_EW) else super.requestWidgetCursor(g)
+    }
+    //?}
 
     override fun onClick(event: MouseButtonEvent, doubleClick: Boolean) {
         setValueFromMouse(event.x())

@@ -3,8 +3,14 @@ package com.dreamdisplays.client.ui.widgets
 import com.dreamdisplays.client.ui.GuiGraphicsCompat
 import com.dreamdisplays.client.ui.kit.UiText
 import com.dreamdisplays.client.ui.kit.UiWidget
+//? if >=26 {
+import com.mojang.blaze3d.platform.cursor.CursorTypes
+//?}
 import net.minecraft.client.InputType
 import net.minecraft.client.Minecraft
+//? if >=26 {
+import net.minecraft.client.gui.GuiGraphicsExtractor
+//?}
 import net.minecraft.client.gui.narration.NarratedElementType
 import net.minecraft.client.gui.narration.NarrationElementOutput
 import net.minecraft.client.input.MouseButtonEvent
@@ -66,6 +72,16 @@ class SeekBar(
     override fun updateWidgetNarration(builder: NarrationElementOutput) {
         builder.add(NarratedElementType.TITLE, createNarrationMessage())
     }
+
+    //? if >=26 {
+    override fun requestWidgetCursor(g: GuiGraphicsExtractor) {
+        if (active && duration() > 0 && isHovered) {
+            g.requestCursor(CursorTypes.RESIZE_EW)
+        } else {
+            super.requestWidgetCursor(g)
+        }
+    }
+    //?}
 
     override fun onClick(event: MouseButtonEvent, doubleClick: Boolean) {
         if (!active) return
