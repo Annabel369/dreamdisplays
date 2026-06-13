@@ -2,9 +2,6 @@ package com.dreamdisplays.render
 
 import com.dreamdisplays.Initializer
 import com.dreamdisplays.player.nativebridge.NativeMedia
-import com.mojang.blaze3d.pipeline.BlendFunction
-import com.mojang.blaze3d.pipeline.ColorTargetState
-import com.mojang.blaze3d.pipeline.DepthStencilState
 import com.mojang.blaze3d.pipeline.RenderPipeline
 import com.mojang.blaze3d.platform.NativeImage
 import com.mojang.blaze3d.shaders.UniformType
@@ -92,8 +89,7 @@ object DisplayYuvRenderTypes {
             .withSampler(SAMPLER_Y)
             .withSampler(SAMPLER_U)
             .withSampler(SAMPLER_V)
-            .withColorTargetState(ColorTargetState(BlendFunction.TRANSLUCENT))
-            .withDepthStencilState(DepthStencilState.DEFAULT)
+            .withDisplayColorAndDepth()
             .withCull(false)
             .withVertexFormat(DefaultVertexFormat.POSITION_TEX_COLOR, VertexFormat.Mode.QUADS)
             .build()

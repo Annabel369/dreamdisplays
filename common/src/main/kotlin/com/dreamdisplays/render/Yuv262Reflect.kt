@@ -4,9 +4,6 @@ import com.dreamdisplays.Initializer
 import com.mojang.blaze3d.pipeline.RenderPipeline
 import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.blaze3d.textures.GpuTexture
-import com.mojang.blaze3d.pipeline.BlendFunction
-import com.mojang.blaze3d.pipeline.ColorTargetState
-import com.mojang.blaze3d.pipeline.DepthStencilState
 import com.mojang.blaze3d.vertex.DefaultVertexFormat
 import com.mojang.blaze3d.vertex.VertexFormat
 import net.minecraft.client.renderer.texture.AbstractTexture
@@ -79,8 +76,7 @@ internal object Yuv262Reflect {
         builder.withLocation(Identifier.fromNamespaceAndPath(Initializer.MOD_ID, "pipeline/display_yuv"))
         builder.withVertexShader(Identifier.fromNamespaceAndPath(Initializer.MOD_ID, "core/display_fog"))
         builder.withFragmentShader(Identifier.fromNamespaceAndPath(Initializer.MOD_ID, "core/display_yuv"))
-        builder.withColorTargetState(ColorTargetState(BlendFunction.TRANSLUCENT))
-        builder.withDepthStencilState(DepthStencilState.DEFAULT)
+        builder.withDisplayColorAndDepth()
         builder.withCull(false)
         return builder.build()
     }

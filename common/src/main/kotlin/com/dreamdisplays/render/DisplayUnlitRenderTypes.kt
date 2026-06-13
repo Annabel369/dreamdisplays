@@ -1,9 +1,6 @@
 package com.dreamdisplays.render
 
 import com.dreamdisplays.Initializer
-import com.mojang.blaze3d.pipeline.BlendFunction
-import com.mojang.blaze3d.pipeline.ColorTargetState
-import com.mojang.blaze3d.pipeline.DepthStencilState
 import com.mojang.blaze3d.pipeline.RenderPipeline
 import com.mojang.blaze3d.shaders.UniformType
 import com.mojang.blaze3d.vertex.DefaultVertexFormat
@@ -51,8 +48,7 @@ object DisplayUnlitRenderTypes {
         .withUniform("Projection", UniformType.UNIFORM_BUFFER)
         .withUniform("Fog", UniformType.UNIFORM_BUFFER)
         .withSampler(SAMPLER_TEXTURE)
-        .withColorTargetState(ColorTargetState(BlendFunction.TRANSLUCENT))
-        .withDepthStencilState(DepthStencilState.DEFAULT)
+        .withDisplayColorAndDepth()
         .withCull(false)
         .withVertexFormat(DefaultVertexFormat.POSITION_TEX_COLOR, VertexFormat.Mode.QUADS)
         .build()
@@ -79,8 +75,7 @@ object DisplayUnlitRenderTypes {
         builder.withLocation(Identifier.fromNamespaceAndPath(Initializer.MOD_ID, "pipeline/display_unlit_textured"))
         builder.withVertexShader(Identifier.fromNamespaceAndPath(Initializer.MOD_ID, "core/display_fog"))
         builder.withFragmentShader(Identifier.fromNamespaceAndPath(Initializer.MOD_ID, "core/display_fog"))
-        builder.withColorTargetState(ColorTargetState(BlendFunction.TRANSLUCENT))
-        builder.withDepthStencilState(DepthStencilState.DEFAULT)
+        builder.withDisplayColorAndDepth()
         builder.withCull(false)
         return builder.build()
     }
