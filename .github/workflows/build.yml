@@ -475,6 +475,20 @@ jobs:
                 ;;
             esac
 
+            # vcpkg builds the ffmpeg libraries without the CLI (--disable-ffmpeg),
+            # so `ffmpeg -L` is unavailable on Windows. Fall back to the port's
+            # bundled copyright file as the canonical license record.
+            if [[ ! -s "$license_dir/ffmpeg-license.txt" ]]; then
+              for fallback in \
+                "$license_dir/ffmpeg-vcpkg-copyright.txt" \
+                "$license_dir/ffmpeg-debian-copyright.txt"; do
+                if [[ -s "$fallback" ]]; then
+                  cp "$fallback" "$license_dir/ffmpeg-license.txt"
+                  break
+                fi
+              done
+            fi
+
             if [[ ! -s "$license_dir/ffmpeg-license.txt" ]]; then
               echo "Missing FFmpeg license metadata for $platform" >&2
               exit 1
@@ -532,7 +546,7 @@ jobs:
           path: native-artifact/native-${{ matrix.native.platform }}.tar
           if-no-files-found: error
           compression-level: 0
-          retention-days: 7
+          retention-days: 1
 
   build:
     name: Build ${{ matrix.mc }}
