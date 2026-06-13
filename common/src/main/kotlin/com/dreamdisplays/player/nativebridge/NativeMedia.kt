@@ -98,12 +98,12 @@ internal object NativeMedia {
     /**
      * Experimental in-process decode: libavformat/libavcodec run inside `dreamdisplays_lav`
      * instead of a separate FFmpeg process, removing the process spawn and the stdout pipe.
-     * Requires the separate lav library (which links the system FFmpeg shared libraries),
-     * the planar GPU path, and the opt-in `-Ddreamdisplays.native.libav=true`.
+     * Requires the separate lav library (which links the system FFmpeg shared libraries)
+     * and the planar GPU path. Disable with `-Ddreamdisplays.native.libav=false`.
      */
     val lavInProcessEnabled: Boolean
         get() = yuvGpuEnabled
-                && System.getProperty("dreamdisplays.native.libav", "false").toBoolean()
+                && System.getProperty("dreamdisplays.native.libav", "true").toBoolean()
                 && lavAvailable
 
     /**

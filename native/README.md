@@ -28,7 +28,7 @@ backend.
 Runtime toggles:
 
 ```sh
--Ddreamdisplays.native.libav=true             # Enable the in-process video path
+-Ddreamdisplays.native.libav=false            # Disable the in-process video path
 -Ddreamdisplays.native.libav.hw=auto          # Auto (default), videotoolbox, d3d11va, vaapi, cuda, none
 -Ddreamdisplays.native.libav.zeroCopy=true    # Enable the additive hardware-surface ABI once a renderer is wired
 ```
