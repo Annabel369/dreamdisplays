@@ -27,29 +27,32 @@ fun chiselToLegacy(lines: List<String>): String {
             out.appendLine("/*")
             ifBranch.forEach { out.appendLine(it) }
             out.appendLine("*/")
-            // Keep the "//?} else" marker line.
+            // Keep the "//?}" or "//?} else" marker line.
             if (i < lines.size) {
-                out.appendLine(lines[i])
+                val closingLine = lines[i]
+                val hasElse = closingLine.trimStart().startsWith("//?} else")
+                out.appendLine(closingLine)
                 i++
-            }
-            // The else-branch is a single /* ... */ block; uncomment it.
-            if (i < lines.size) {
-                var j = i
-                while (j < lines.size && !lines[j].contains("*/")) j++
-                val block = lines.subList(i, minOf(j + 1, lines.size)).toMutableList()
-                if (block.isNotEmpty()) {
-                    val firstIdx = block[0].indexOf("/*")
-                    if (firstIdx >= 0) {
-                        block[0] = block[0].removeRange(firstIdx, firstIdx + 2)
+                // The else-branch is a single /* ... */ block; uncomment it.
+                // Only process if the closing marker was "//?} else", not a plain "//?}".
+                if (hasElse && i < lines.size) {
+                    var j = i
+                    while (j < lines.size && !lines[j].contains("*/")) j++
+                    val block = lines.subList(i, minOf(j + 1, lines.size)).toMutableList()
+                    if (block.isNotEmpty()) {
+                        val firstIdx = block[0].indexOf("/*")
+                        if (firstIdx >= 0) {
+                            block[0] = block[0].removeRange(firstIdx, firstIdx + 2)
+                        }
+                        val lastLine = block[block.size - 1]
+                        val lastIdx = lastLine.lastIndexOf("*/")
+                        if (lastIdx >= 0) {
+                            block[block.size - 1] = lastLine.removeRange(lastIdx, lastIdx + 2)
+                        }
+                        block.forEach { out.appendLine(it) }
                     }
-                    val lastLine = block[block.size - 1]
-                    val lastIdx = lastLine.lastIndexOf("*/")
-                    if (lastIdx >= 0) {
-                        block[block.size - 1] = lastLine.removeRange(lastIdx, lastIdx + 2)
-                    }
-                    block.forEach { out.appendLine(it) }
+                    i = j + 1
                 }
-                i = j + 1
             }
         } else {
             out.appendLine(line)
