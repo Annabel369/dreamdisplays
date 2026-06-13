@@ -508,7 +508,7 @@ jobs:
           esac
           collect_license_metadata
 
-          required_components=(avutil swresample swscale avcodec avformat avfilter avdevice)
+          required_components=(avutil swresample swscale avcodec avformat)
           for required in "$native_library" "$lav_library"; do
             test -f "$out/$required"
           done
@@ -618,7 +618,7 @@ jobs:
             test -f "native/build/ci-bundle/dreamdisplays-natives/$platform/$(native_name "$platform")"
             test -f "native/build/ci-bundle/dreamdisplays-natives/$platform/$(lav_name "$platform")"
             test -s "native/build/ci-bundle/dreamdisplays-natives/$platform/licenses/ffmpeg-license.txt"
-            for component in avutil swresample swscale avcodec avformat avfilter avdevice; do
+            for component in avutil swresample swscale avcodec avformat; do
               find "native/build/ci-bundle/dreamdisplays-natives/$platform" -maxdepth 1 -type f \
                 | grep -E "(${component}).*(\\.dll|\\.dylib|\\.so)" >/dev/null
             done
@@ -650,7 +650,7 @@ jobs:
 
           mc = "${{ matrix.mc }}"
           version = "${{ needs.metadata.outputs.version }}"
-          ffmpeg_components = ["avutil", "swresample", "swscale", "avcodec", "avformat", "avfilter", "avdevice"]
+          ffmpeg_components = ["avutil", "swresample", "swscale", "avcodec", "avformat"]
           platforms = os.environ["REQUIRED_NATIVE_PLATFORMS"].split()
 
           def native_name(platform: str) -> str:

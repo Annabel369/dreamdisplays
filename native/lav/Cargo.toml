@@ -11,4 +11,4 @@ name = "dreamdisplays_lav"
 crate-type = ["cdylib", "lib"]
 
 [dependencies]
-ffmpeg-next = "8.1.0"
+ffmpeg-next = { version = "8.1.0", default-features = false, features = ["codec", "format", "software-scaling", "software-resampling"] }
