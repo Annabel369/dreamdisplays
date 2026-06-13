@@ -197,6 +197,8 @@ jobs:
 
       - name: Install FFmpeg dependencies on Linux
         if: runner.os == 'Linux'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           sudo apt-get update
@@ -211,9 +213,34 @@ jobs:
             echo "Python is required to resolve the latest BtbN FFmpeg asset." >&2
             exit 1
           fi
+          auth_args=()
+          if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+            auth_args=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
+          fi
+          release_json="${RUNNER_TEMP}/btbn-ffmpeg-release.json"
+          curl -fsSL --retry 3 --retry-all-errors \
+            -A "dreamdisplays-ci" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "${auth_args[@]}" \
+            -o "$release_json" \
+            https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/latest
           url="$(
-            curl -fsSL https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/latest |
-            FFMPEG_ARCH="$ffmpeg_arch" FFMPEG_EXT="tar.xz" "$python_bin" -c 'import json, os, re, sys; arch = os.environ["FFMPEG_ARCH"]; ext = os.environ["FFMPEG_EXT"]; pattern = re.compile(rf"^ffmpeg-n8\..*-{re.escape(arch)}-lgpl-shared-8\.1\.{re.escape(ext)}$"); url = next((asset["browser_download_url"] for asset in json.load(sys.stdin).get("assets", []) if pattern.match(asset.get("name", ""))), None); print(url) if url else sys.exit(f"No BtbN FFmpeg asset matched {pattern.pattern}")'
+            FFMPEG_ARCH="$ffmpeg_arch" FFMPEG_EXT="tar.xz" "$python_bin" - "$release_json" <<'PY'
+          import json, os, re, sys
+
+          path = sys.argv[1]
+          arch = os.environ["FFMPEG_ARCH"]
+          ext = os.environ["FFMPEG_EXT"]
+          pattern = re.compile(rf"^ffmpeg-n8\..*-{re.escape(arch)}-lgpl-shared-8\.1\.{re.escape(ext)}$")
+          with open(path, encoding="utf-8") as f:
+              release = json.load(f)
+          url = next(
+              (asset["browser_download_url"] for asset in release.get("assets", []) if pattern.match(asset.get("name", ""))),
+              None,
+          )
+          print(url) if url else sys.exit(f"No BtbN FFmpeg asset matched {pattern.pattern}")
+          PY
           )"
           dest="${RUNNER_TEMP}/ffmpeg"
           curl -fL --retry 3 --retry-all-errors -o "${RUNNER_TEMP}/ffmpeg.tar.xz" "$url"
@@ -231,6 +258,8 @@ jobs:
       - name: Install FFmpeg dependencies on Windows
         if: runner.os == 'Windows'
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           # Use a prebuilt LGPL shared FFmpeg instead of compiling it from
@@ -247,9 +276,34 @@ jobs:
             echo "Python is required to resolve the latest BtbN FFmpeg asset." >&2
             exit 1
           fi
+          auth_args=()
+          if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+            auth_args=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
+          fi
+          release_json="${RUNNER_TEMP}/btbn-ffmpeg-release.json"
+          curl -fsSL --retry 3 --retry-all-errors \
+            -A "dreamdisplays-ci" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "${auth_args[@]}" \
+            -o "$release_json" \
+            https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/latest
           url="$(
-            curl -fsSL https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/latest |
-            FFMPEG_ARCH="$ffmpeg_arch" FFMPEG_EXT="zip" "$python_bin" -c 'import json, os, re, sys; arch = os.environ["FFMPEG_ARCH"]; ext = os.environ["FFMPEG_EXT"]; pattern = re.compile(rf"^ffmpeg-n8\..*-{re.escape(arch)}-lgpl-shared-8\.1\.{re.escape(ext)}$"); url = next((asset["browser_download_url"] for asset in json.load(sys.stdin).get("assets", []) if pattern.match(asset.get("name", ""))), None); print(url) if url else sys.exit(f"No BtbN FFmpeg asset matched {pattern.pattern}")'
+            FFMPEG_ARCH="$ffmpeg_arch" FFMPEG_EXT="zip" "$python_bin" - "$release_json" <<'PY'
+          import json, os, re, sys
+
+          path = sys.argv[1]
+          arch = os.environ["FFMPEG_ARCH"]
+          ext = os.environ["FFMPEG_EXT"]
+          pattern = re.compile(rf"^ffmpeg-n8\..*-{re.escape(arch)}-lgpl-shared-8\.1\.{re.escape(ext)}$")
+          with open(path, encoding="utf-8") as f:
+              release = json.load(f)
+          url = next(
+              (asset["browser_download_url"] for asset in release.get("assets", []) if pattern.match(asset.get("name", ""))),
+              None,
+          )
+          print(url) if url else sys.exit(f"No BtbN FFmpeg asset matched {pattern.pattern}")
+          PY
           )"
           dest="${RUNNER_TEMP}/ffmpeg"
 
