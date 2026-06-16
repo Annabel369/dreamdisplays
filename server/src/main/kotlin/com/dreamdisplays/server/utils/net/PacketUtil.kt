@@ -62,6 +62,7 @@ import java.util.*
         isLocked: Boolean = true,
         mode: PlaybackMode = if (isSync) PlaybackMode.SYNCED else PlaybackMode.LOCAL,
         qualityCap: Int = 0,
+        rotation: Int = 0,
     ) {
         val (v2, players) = partition(players)
         PaperV2Networking.send(
@@ -73,6 +74,7 @@ import java.util.*
                 facing = facing.toPacketByte().toInt(),
                 isSync = isSync, lang = lang, isLocked = isLocked,
                 mode = mode.wire, qualityCap = qualityCap,
+                rotation = rotation,
             ),
         )
         if (players.isEmpty()) return
@@ -255,12 +257,14 @@ import java.util.*
         write(bytes)
     }
 
-    /** Maps a cardinal [BlockFace] to its wire byte; non-cardinal faces fall back to north. */
+    /** Maps a [BlockFace] to its wire byte; faces not in the protocol fall back to north. */
     private fun BlockFace.toPacketByte(): Byte = when (this) {
         BlockFace.NORTH -> 0
         BlockFace.EAST -> 1
         BlockFace.SOUTH -> 2
         BlockFace.WEST -> 3
+        BlockFace.UP -> 4
+        BlockFace.DOWN -> 5
         else -> 0
     }
 
@@ -325,6 +329,7 @@ import java.util.*
                 facing = directionToFacingUtil(display.facing).toPacket().toInt(),
                 isSync = display.isSync, lang = display.lang, isLocked = display.isLocked,
                 mode = display.mode.wire, qualityCap = display.qualityCap,
+                rotation = display.rotation,
             ),
         )
         if (legacy.isEmpty()) return
@@ -415,14 +420,15 @@ import java.util.*
         }
     }
 
-    /** Maps a cardinal [Direction] to its wire byte; non-cardinal faces fall back to the north. */
+    /** Maps a [Direction] to its wire [FacingUtil]; faces not in the protocol fall back to north. */
     private fun directionToFacingUtil(direction: Direction): FacingUtil {
         return when (direction) {
             Direction.NORTH -> FacingUtil.NORTH
             Direction.EAST -> FacingUtil.EAST
             Direction.SOUTH -> FacingUtil.SOUTH
             Direction.WEST -> FacingUtil.WEST
-            else -> FacingUtil.NORTH
+            Direction.UP -> FacingUtil.UP
+            Direction.DOWN -> FacingUtil.DOWN
         }
     }
 }
