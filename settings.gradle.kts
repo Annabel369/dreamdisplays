@@ -18,8 +18,16 @@ pluginManagement {
     }
     resolutionStrategy {
         eachPlugin {
+            val loomVersion = scVersion("loom.version")
+            val isLegacy = scVersion("minecraft.version").startsWith("1.")
             when (requested.id.id) {
-                "net.fabricmc.fabric-loom", "net.fabricmc.fabric-loom-remap" -> useVersion(scVersion("loom.version"))
+                "net.fabricmc.fabric-loom" -> useVersion(loomVersion)
+                "net.fabricmc.fabric-loom-remap" -> {
+                    if (isLegacy) useVersion(loomVersion)
+                    // For deobfuscated (26.x) Minecraft, fabric-loom-remap doesn't exist;
+                    // redirect to fabric-loom's artifact (declared apply false, never applied).
+                    else useModule("net.fabricmc:fabric-loom:$loomVersion")
+                }
                 "net.neoforged.moddev" -> useVersion(scVersion("moddev.version"))
             }
         }
