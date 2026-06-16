@@ -95,6 +95,7 @@ import org.slf4j.LoggerFactory
         val displayData = DisplayManager.getDisplayData(displayId) as? FabricDisplayData
             ?: return MessageUtil.sendMessage(player, "noDisplay")
 
+        // On Fabric: own display = always allowed; others' display = op-only (no permission-node API).
         if (displayData.ownerId != player.uuid && !isOpLevel2(player)) {
             MessageUtil.sendMessage(player, "displayCommandMissingPermission")
             return
@@ -142,6 +143,9 @@ import org.slf4j.LoggerFactory
         if (!PlaybackMode.isBaseMode(mode)) return
         val displayData = DisplayManager.getDisplayData(displayId) as? FabricDisplayData ?: return
         if (!PlaybackPermissions.canSetMode(context(displayData, player))) return
+
+        // Note: mode-specific permission nodes (dreamdisplays.local/synced/broadcast) are not enforced
+        // here because Fabric has no permission-node API. Enforcement is Paper-only (DisplayActions.kt).
 
         displayData.mode = mode
         Server.storage?.saveDisplay(displayData)

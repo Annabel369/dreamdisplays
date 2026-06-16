@@ -106,7 +106,14 @@ import java.nio.file.StandardCopyOption
                 updates = t?.getString("permissions.updates") ?: "dreamdisplays.updates",
                 help = t?.getString("permissions.help") ?: "dreamdisplays.help",
                 stats = t?.getString("permissions.stats") ?: "dreamdisplays.stats",
-                toggle_others = t?.getString("permissions.toggle_others") ?: "dreamdisplays.toggle.others"
+                toggle_others = t?.getString("permissions.toggle_others") ?: "dreamdisplays.toggle.others",
+                local = t?.getString("permissions.local") ?: "dreamdisplays.local",
+                synced = t?.getString("permissions.synced") ?: "dreamdisplays.synced",
+                broadcast = t?.getString("permissions.broadcast") ?: "dreamdisplays.broadcast",
+                watchparty = t?.getString("permissions.watchparty") ?: "dreamdisplays.watchparty",
+                lock = t?.getString("permissions.lock") ?: "dreamdisplays.lock",
+                delete_others = t?.getString("permissions.delete_others") ?: "dreamdisplays.delete.others",
+                create_bypass = t?.getString("permissions.create_bypass") ?: "dreamdisplays.create.bypass"
             )
         )
     }
@@ -268,6 +275,13 @@ import java.nio.file.StandardCopyOption
         val help get() = permissions.help
         val stats get() = permissions.stats
         val toggleOthers get() = permissions.toggle_others
+        val local get() = permissions.local
+        val synced get() = permissions.synced
+        val broadcast get() = permissions.broadcast
+        val watchparty get() = permissions.watchparty
+        val lock get() = permissions.lock
+        val deleteOthers get() = permissions.delete_others
+        val createBypass get() = permissions.create_bypass
 
         data class PermissionsConfig(
             val create: String = "dreamdisplays.create",
@@ -281,6 +295,13 @@ import java.nio.file.StandardCopyOption
             val help: String = "dreamdisplays.help",
             val stats: String = "dreamdisplays.stats",
             val toggle_others: String = "dreamdisplays.toggle.others",
+            val local: String = "dreamdisplays.local",
+            val synced: String = "dreamdisplays.synced",
+            val broadcast: String = "dreamdisplays.broadcast",
+            val watchparty: String = "dreamdisplays.watchparty",
+            val lock: String = "dreamdisplays.lock",
+            val delete_others: String = "dreamdisplays.delete.others",
+            val create_bypass: String = "dreamdisplays.create.bypass",
         )
     }
 
@@ -433,7 +454,14 @@ import java.nio.file.StandardCopyOption
                 updates = t?.getString("permissions.updates") ?: "dreamdisplays.updates",
                 help = t?.getString("permissions.help") ?: "dreamdisplays.help",
                 stats = t?.getString("permissions.stats") ?: "dreamdisplays.stats",
-                toggle_others = t?.getString("permissions.toggle_others") ?: "dreamdisplays.toggle.others"
+                toggle_others = t?.getString("permissions.toggle_others") ?: "dreamdisplays.toggle.others",
+                local = t?.getString("permissions.local") ?: "dreamdisplays.local",
+                synced = t?.getString("permissions.synced") ?: "dreamdisplays.synced",
+                broadcast = t?.getString("permissions.broadcast") ?: "dreamdisplays.broadcast",
+                watchparty = t?.getString("permissions.watchparty") ?: "dreamdisplays.watchparty",
+                lock = t?.getString("permissions.lock") ?: "dreamdisplays.lock",
+                delete_others = t?.getString("permissions.delete_others") ?: "dreamdisplays.delete.others",
+                create_bypass = t?.getString("permissions.create_bypass") ?: "dreamdisplays.create.bypass"
             )
         )
     }
@@ -607,6 +635,13 @@ import java.nio.file.StandardCopyOption
         val help get() = permissions.help
         val stats get() = permissions.stats
         val toggleOthers get() = permissions.toggle_others
+        val local get() = permissions.local
+        val synced get() = permissions.synced
+        val broadcast get() = permissions.broadcast
+        val watchparty get() = permissions.watchparty
+        val lock get() = permissions.lock
+        val deleteOthers get() = permissions.delete_others
+        val createBypass get() = permissions.create_bypass
 
         data class PermissionsConfig(
             val create: String = "dreamdisplays.create",
@@ -620,6 +655,13 @@ import java.nio.file.StandardCopyOption
             val help: String = "dreamdisplays.help",
             val stats: String = "dreamdisplays.stats",
             val toggle_others: String = "dreamdisplays.toggle.others",
+            val local: String = "dreamdisplays.local",
+            val synced: String = "dreamdisplays.synced",
+            val broadcast: String = "dreamdisplays.broadcast",
+            val watchparty: String = "dreamdisplays.watchparty",
+            val lock: String = "dreamdisplays.lock",
+            val delete_others: String = "dreamdisplays.delete.others",
+            val create_bypass: String = "dreamdisplays.create.bypass",
         )
     }
 
@@ -669,13 +711,20 @@ create = "dreamdisplays.create"
 video = "dreamdisplays.video"
 info = "dreamdisplays.info"
 help = "dreamdisplays.help"
+local = "dreamdisplays.local"
+synced = "dreamdisplays.synced"
+broadcast = "dreamdisplays.broadcast"
+watchparty = "dreamdisplays.watchparty"
+lock = "dreamdisplays.lock"
 list = "dreamdisplays.list"
 stats = "dreamdisplays.stats"
 premium = "dreamdisplays.premium"
 delete = "dreamdisplays.delete"
+delete_others = "dreamdisplays.delete.others"
 reload = "dreamdisplays.reload"
 updates = "dreamdisplays.updates"
 toggle_others = "dreamdisplays.toggle.others"
+create_bypass = "dreamdisplays.create.bypass"
 """.trimIndent()
     }
 }

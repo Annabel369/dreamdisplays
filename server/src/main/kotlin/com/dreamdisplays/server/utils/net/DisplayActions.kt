@@ -39,9 +39,10 @@ import java.util.UUID
         val displayData = DisplayManager.getDisplayData(displayId)
             ?: return MessageUtil.sendMessage(player, "noDisplay")
 
-        if (displayData.ownerId != player.uniqueId &&
-            !player.hasPermission(Main.config.permissions.delete)
-        ) {
+        val isOwner = displayData.ownerId == player.uniqueId
+        val canDelete = if (isOwner) player.hasPermission(Main.config.permissions.delete)
+                        else player.hasPermission(Main.config.permissions.deleteOthers)
+        if (!canDelete) {
             MessageUtil.sendMessage(player, "displayCommandMissingPermission")
             return
         }
@@ -68,7 +69,7 @@ import java.util.UUID
     /** Updates the locked flag of a display owned by [player] and rebroadcasts. */
     fun setLocked(player: Player, displayId: UUID, locked: Boolean) {
         val displayData = DisplayManager.getDisplayData(displayId) as? PaperDisplayData ?: return
-        if (!PlaybackPermissions.canToggleLock(context(displayData, player))) return
+        if (!PlaybackPermissions.canToggleLock(lockContext(displayData, player))) return
 
         displayData.isLocked = locked
 
@@ -81,6 +82,12 @@ import java.util.UUID
         if (!PlaybackMode.isBaseMode(mode)) return
         val displayData = DisplayManager.getDisplayData(displayId) as? PaperDisplayData ?: return
         if (!PlaybackPermissions.canSetMode(context(displayData, player))) return
+
+        // Check mode-specific permissions
+        if (!canAccessMode(player, mode)) {
+            MessageUtil.sendMessage(player, "displayCommandMissingPermission")
+            return
+        }
 
         displayData.mode = mode
         DisplayManager.sendUpdate(displayData, DisplayManager.getReceivers(displayData))
@@ -96,6 +103,10 @@ import java.util.UUID
     /** Starts a watch-party session with [player] as host. */
     fun watchPartyStart(player: Player, displayId: UUID, url: String, lang: String) {
         val displayData = DisplayManager.getDisplayData(displayId) as? PaperDisplayData ?: return
+        if (!player.hasPermission(Main.config.permissions.watchparty)) {
+            MessageUtil.sendMessage(player, "displayCommandMissingPermission")
+            return
+        }
         WatchPartyManager.start(displayData, player.uniqueId, url, lang)
     }
 
@@ -115,6 +126,24 @@ import java.util.UUID
     /** Builds the permission context for [player] acting on [display]. */
     private fun context(display: PaperDisplayData, player: Player) =
         PlaybackContexts.of(display, player.uniqueId, player.hasPermission(Main.config.permissions.delete))
+
+    /** Like [context] but elevates [player] to admin if they hold the [lock][Config.PermissionsSection.lock] permission. */
+    private fun lockContext(display: PaperDisplayData, player: Player) =
+        PlaybackContexts.of(
+            display, player.uniqueId,
+            player.hasPermission(Main.config.permissions.delete) || player.hasPermission(Main.config.permissions.lock)
+        )
+
+    /** Checks if [player] has permission to access the specified [mode]. */
+    private fun canAccessMode(player: Player, mode: PlaybackMode): Boolean {
+        val permission = when (mode) {
+            PlaybackMode.LOCAL -> Main.config.permissions.local
+            PlaybackMode.SYNCED -> Main.config.permissions.synced
+            PlaybackMode.BROADCAST -> Main.config.permissions.broadcast
+            else -> return true
+        }
+        return player.hasPermission(permission)
+    }
 
     /** Records the player's reported mod version and runs the mod / plugin update checks. */
     fun recordVersionAndCheckUpdates(player: Player, versionString: String) {
