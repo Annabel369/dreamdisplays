@@ -46,11 +46,11 @@ import kotlin.math.abs
             )
 
         validate(sel,
-            sendError = { key ->
+            sendError = { key, args ->
                 if (key == "noDisplayTerritories")
                     MessageUtil.sendMessageWithMaterials(player, key, Main.config.settings.selectionMaterial, Main.config.settings.baseMaterial)
                 else
-                    MessageUtil.sendMessage(player, key)
+                    MessageUtil.sendMessage(player, key, *args)
             },
             onWrongStructure = { MessageUtil.sendMessageWithMaterials(player, "wrongStructure", Main.config.settings.baseMaterial) }
         ) ?: return
@@ -73,18 +73,18 @@ import kotlin.math.abs
      */
     private fun validate(
         sel: PaperSelectionData,
-        sendError: (String) -> Unit,
+        sendError: (String, Array<out Any>) -> Unit,
         onWrongStructure: (() -> Unit)? = null,
     ): PaperSelectionData? {
         val pos1 = sel.pos1
         val pos2 = sel.pos2
         if (!sel.isReady || pos1 == null || pos2 == null) {
-            sendError("noDisplayTerritories")
+            sendError("noDisplayTerritories", emptyArray())
             return null
         }
 
         if (pos1.world != pos2.world) {
-            sendError("secondPointNotSelected")
+            sendError("secondPointNotSelected", emptyArray())
             return null
         }
 
@@ -151,11 +151,11 @@ import kotlin.math.abs
             ).let { 0 }
 
         validate(sel, ctx.source.server,
-            sendError = { key ->
+            sendError = { key, args ->
                 if (key == "noDisplayTerritories")
                     MessageUtil.sendMessageWithMaterials(player, key, Server.config.settings.selectionMaterial, Server.config.settings.baseMaterial)
                 else
-                    MessageUtil.sendMessage(player, key)
+                    MessageUtil.sendMessage(player, key, *args)
             },
             onWrongStructure = { MessageUtil.sendMessageWithMaterials(player, "wrongStructure", Server.config.settings.baseMaterial) }
         ) ?: return 0
@@ -185,25 +185,25 @@ import kotlin.math.abs
     private fun validate(
         sel: FabricSelectionData,
         server: MinecraftServer,
-        sendError: (String) -> Unit,
+        sendError: (String, Array<out Any>) -> Unit,
         onWrongStructure: (() -> Unit)? = null,
     ): FabricSelectionData? {
         if (!sel.isReady || sel.pos1 == null || sel.pos2 == null) {
-            sendError("noDisplayTerritories")
+            sendError("noDisplayTerritories", emptyArray())
             return null
         }
 
         val region = sel.region() ?: run {
-            sendError("noDisplayTerritories")
+            sendError("noDisplayTerritories", emptyArray())
             return null
         }
 
         val worldKey = sel.worldKey ?: run {
-            sendError("noDisplay")
+            sendError("noDisplay", emptyArray())
             return null
         }
         val level = RegionUtil.getLevelByKey(server, worldKey) ?: run {
-            sendError("noDisplay")
+            sendError("noDisplay", emptyArray())
             return null
         }
 
@@ -268,34 +268,34 @@ private fun validateRegion(
     maxHeight: Int,
     maxWidth: Int,
     hasExpectedBaseMaterial: () -> Boolean,
-    sendError: (String) -> Unit,
+    sendError: (String, Array<out Any>) -> Unit,
     onWrongStructure: (() -> Unit)? = null,
 ): Unit? {
     val depthOk = (faceModX != 0 && deltaX == faceModX)
         || (faceModZ != 0 && deltaZ == faceModZ)
         || (faceModY != 0 && deltaY == faceModY)
     if (!depthOk) {
-        sendError("structureWrongDepth")
+        sendError("structureWrongDepth", emptyArray())
         return null
     }
     if (height < minHeight || width < minWidth) {
-        sendError("structureTooSmall")
+        sendError("structureTooSmall", arrayOf(minWidth, minHeight))
         return null
     }
     if (height > maxHeight || width > maxWidth) {
-        sendError("structureTooLarge")
+        sendError("structureTooLarge", arrayOf(maxWidth, maxHeight))
         return null
     }
     if (maxY > 2047) {
-        sendError("displayTooHigh")
+        sendError("displayTooHigh", emptyArray())
         return null
     }
     if (minY < -2048) {
-        sendError("displayTooLow")
+        sendError("displayTooLow", emptyArray())
         return null
     }
     if (!hasExpectedBaseMaterial()) {
-        onWrongStructure?.invoke() ?: sendError("wrongStructure")
+        onWrongStructure?.invoke() ?: sendError("wrongStructure", emptyArray())
         return null
     }
     return Unit

@@ -44,8 +44,9 @@ object MessageUtil {
     @PaperOnly private val gsonSerializer = GsonComponentSerializer.gson()
 
     /** Sends a localized message identified by [messageKey] to [sender]. */
-    @PaperOnly @NullMarked fun sendMessage(sender: CommandSender?, messageKey: String) {
-        val message = Main.config.getMessageForPlayer(sender as? Player, messageKey)
+    @PaperOnly @NullMarked fun sendMessage(sender: CommandSender?, messageKey: String, vararg args: Any) {
+        val raw = Main.config.getMessageForPlayer(sender as? Player, messageKey)
+        val message = if (args.isNotEmpty() && raw is String) raw.format(*args) else raw
         sendColoredMessage(sender, message)
     }
 
@@ -113,9 +114,10 @@ object MessageUtil {
     }
 
     /** Sends a localized message identified by [messageKey] to [player]. */
-    @FabricOnly fun sendMessage(player: ServerPlayer?, messageKey: String) {
+    @FabricOnly fun sendMessage(player: ServerPlayer?, messageKey: String, vararg args: Any) {
         val config = com.dreamdisplays.server.Server.config
-        val message = config.getMessageForPlayer(player, messageKey)
+        val raw = config.getMessageForPlayer(player, messageKey)
+        val message = if (args.isNotEmpty() && raw is String) raw.format(*args) else raw
         sendColoredMessage(player, message)
     }
 
