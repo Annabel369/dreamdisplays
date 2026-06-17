@@ -203,7 +203,7 @@ class YtCookieManager(private val executor: Executor) {
         }
         val result = sb.toString()
         if (result.isEmpty()) return null
-        logger.info("Exported ${lines.size} cookie lines, header ${result.length} chars.")
+        logger.debug("Exported ${lines.size} cookie lines, header ${result.length} chars.")
         return result
     }
 
@@ -226,7 +226,7 @@ class YtCookieManager(private val executor: Executor) {
                 // Set the timestamp so the early-return guards above short-circuit later calls;
                 // otherwise this branch re-runs (and re-logs) on every fetch.
                 browserResolvedAt = System.currentTimeMillis()
-                logger.info("Cookies-from-browser disabled via config.")
+                logger.debug("Cookies-from-browser disabled via config.")
                 return null
             }
 

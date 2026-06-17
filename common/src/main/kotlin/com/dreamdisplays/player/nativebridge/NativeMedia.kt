@@ -360,11 +360,11 @@ internal object NativeMedia {
             return false
         }
         if (Runtime.version().feature() < 22) {
-            logger.info("Native pipeline requires Java 22+ (running ${Runtime.version().feature()}); using JVM pipeline.")
+            logger.warn("Native pipeline requires Java 22+ (running ${Runtime.version().feature()}); using JVM pipeline.")
             return false
         }
         val lib = locateLibrary() ?: run {
-            logger.info("Native library not found; using JVM pipeline.")
+            logger.warn("Native library not found; using JVM pipeline.")
             return false
         }
         return try {
@@ -475,7 +475,7 @@ internal object NativeMedia {
             true
         } catch (t: Throwable) {
             // Typically UnsatisfiedLinkError when the system FFmpeg dylibs are missing.
-            logger.info("In-process libav backend unavailable (${t.javaClass.simpleName}: ${t.message}).")
+            logger.warn("In-process libav backend unavailable (${t.javaClass.simpleName}: ${t.message}).")
             false
         }
     }

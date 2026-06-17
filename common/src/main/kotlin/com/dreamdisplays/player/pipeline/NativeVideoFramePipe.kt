@@ -286,7 +286,7 @@ internal class NativeVideoFramePipe(private val debugLabel: String) : FramePipe 
                     }
                     lavPtsBiasNanos = computed
                     if (computed != 0L && MediaPlayer.DEBUG) {
-                        logger.info(
+                        logger.debug(
                             "$debugLabel LAV PTS origin shifted by ${"%.1f".format(computed / 1_000_000.0)}ms " +
                                     "(firstPts=${"%.1f".format(rawLavPtsNanos / 1_000_000.0)}ms, " +
                                     "seek=${"%.1f".format(seekOffsetNanos / 1_000_000.0)}ms).",
@@ -342,7 +342,7 @@ internal class NativeVideoFramePipe(private val debugLabel: String) : FramePipe 
             if (!firstFrame) {
                 firstFrame = true
                 onFirstFrame()
-                if (MediaPlayer.DEBUG) logger.info("$debugLabel First frame ${w}x${h} (native).")
+                if (MediaPlayer.DEBUG) logger.debug("$debugLabel First frame ${w} x ${h} (native).")
             }
 
             videoPts = framePts + frameNs
@@ -398,7 +398,7 @@ internal class NativeVideoFramePipe(private val debugLabel: String) : FramePipe 
         if (cacheWindowMs <= 0 || cacheMaxBytes <= 0) return
         val ok = NativeMedia.lavEnableCache(handle, cacheWindowMs, cacheMaxBytes)
         if (MediaPlayer.DEBUG) {
-            logger.info(
+            logger.debug(
                 "$debugLabel LAV packet cache ${if (ok) "enabled" else "unavailable"} " +
                         "(windowMs=$cacheWindowMs maxBytes=$cacheMaxBytes).",
             )
@@ -537,7 +537,7 @@ internal class NativeVideoFramePipe(private val debugLabel: String) : FramePipe 
             val rt = Runtime.getRuntime()
             val heapUsedMiB = (rt.totalMemory() - rt.freeMemory()) / (1024 * 1024)
             val heapMaxMiB = rt.maxMemory() / (1024 * 1024)
-            logger.info(
+            logger.debug(
                 "$debugLabel native-$kind source=$source frame=${w}x$h bytes=${"%.2f".format(frameBytes / 1048576.0)}MiB " +
                         "read=${readCount} avgRead=${"%.3f".format(avgReadMs)}ms maxRead=${"%.3f".format(maxReadMs)}ms slowRead=$slowReads " +
                         "published=$published noCapture=$notPublished paced=$paced pacedDrops=$pacedDrops " +

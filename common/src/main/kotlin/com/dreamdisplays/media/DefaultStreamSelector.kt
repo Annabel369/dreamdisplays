@@ -31,7 +31,7 @@ class DefaultStreamSelector : StreamSelector {
             ?: audioStreams.firstOrNull()
 
         if (debug) {
-            logger.info(
+            logger.debug(
                 "Video stream ${MediaStreamSelector.describeVideoChoice(video, targetHeight, preferences.preferFps60)} " +
                         "candidates=${videoStreams.size} preferFps60=${preferences.preferFps60}",
             )

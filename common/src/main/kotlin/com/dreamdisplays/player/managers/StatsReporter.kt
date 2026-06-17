@@ -42,7 +42,7 @@ internal class StatsReporter(
         runCatching {
             val (inN, outN, dropN) = pollCounters()
             val sec = intervalMs / 1000.0
-            logger.info("$debugLabel decode=%.1ffps gpu=%.1ffps dropped=%.1f/s pos=%dms live=%s"
+            logger.debug("$debugLabel decode=%.1ffps gpu=%.1ffps dropped=%.1f/s pos=%dms live=%s"
                 .format(inN / sec, outN / sec, dropN / sec, getPositionMs(), isLive()))
         }
     }

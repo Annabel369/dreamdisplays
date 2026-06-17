@@ -115,7 +115,7 @@ internal class FramePrebuffer(
                 if (firstFramePresented.compareAndSet(false, true)) {
                     onFirstFrame()
                     if (com.dreamdisplays.player.MediaPlayer.DEBUG)
-                        logger.info("$debugLabel First frame presented (prebuffered, prefill=$prefillFrames).")
+                        logger.debug("$debugLabel First frame presented (prebuffered, prefill=$prefillFrames).")
                 }
             }
         } catch (_: InterruptedException) {

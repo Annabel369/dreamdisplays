@@ -94,7 +94,7 @@ object YtDlpBinary {
         if (age < BINARY_REFRESH_MS) return
         executor.execute {
             try {
-                logger.info("Bundled yt-dlp is ${age / 86_400_000L} days old, running self-update...")
+                logger.debug("Bundled yt-dlp is ${age / 86_400_000L} days old, running self-update...")
                 val p = ProcessBuilder(bundled.toString(), "-U", "--no-warnings")
                     .redirectErrorStream(true).start()
                 try {
@@ -110,7 +110,7 @@ object YtDlpBinary {
                     Files.setLastModifiedTime(bundled, FileTime.fromMillis(System.currentTimeMillis()))
                 } catch (_: IOException) {
                 }
-                logger.info("yt-dlp self-update finished.")
+                logger.debug("yt-dlp self-update finished.")
             } catch (e: Exception) {
                 logger.warn("yt-dlp self-update failed: ${e.message}")
             }
@@ -135,7 +135,7 @@ object YtDlpBinary {
         Files.createDirectories(target.parent)
         val tmp = target.resolveSibling("${target.fileName}.part")
         val url = DOWNLOAD_BASE + downloadAssetName()
-        logger.info("Downloading yt-dlp from $url...")
+        logger.debug("Downloading yt-dlp from $url...")
 
         val conn = URI.create(url).toURL().openConnection() as HttpURLConnection
         conn.instanceFollowRedirects = true
@@ -155,7 +155,7 @@ object YtDlpBinary {
             Processes.removeMacQuarantine(target)
         }
 
-        logger.info("Ready to work.")
+        logger.debug("Ready to work.")
         return target.toString()
     }
 

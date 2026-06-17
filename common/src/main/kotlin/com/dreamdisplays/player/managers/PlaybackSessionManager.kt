@@ -318,7 +318,7 @@ internal class PlaybackSessionManager(
             onFirstFrame = { clock.markFirstFrame() },
             getBrightness = getBrightness,
             onEos = { _, normalEos ->
-                logger.info("$debugLabel [reappear] replay-only video reached end (normalEos=$normalEos), holding last frame.")
+                logger.debug("$debugLabel [reappear] replay-only video reached end (normalEos=$normalEos), holding last frame.")
             },
         ) ?: run { bridgeCeilingNanos = Long.MAX_VALUE; return false }
         channel.thread = vt
@@ -332,8 +332,8 @@ internal class PlaybackSessionManager(
         }
         updateRawFrameSink()
         isPlaying = true
-        logger.info(
-            "$debugLabel [reappear] replay-only video started ${w}x$h resume=${"%.1f".format(resumeNanos / 1_000_000.0)}ms " +
+        logger.debug(
+            "$debugLabel [reappear] replay-only video started ${w} x $h resume=${"%.1f".format(resumeNanos / 1_000_000.0)}ms " +
                     "edge=${"%.1f".format(liveEdgeNanos / 1_000_000.0)}ms audioPcm=${audioPcm?.size ?: 0}B.",
         )
         return true
@@ -378,7 +378,7 @@ internal class PlaybackSessionManager(
                 audio.onBridgeHandoff() // Let the bridge line's (live-relative) clock drive pacing now
                 bridgeCeilingNanos = Long.MAX_VALUE
                 firstLiveFrame.countDown()
-                logger.info("$debugLabel [reappear] live channel presented first frame; handoff at ${"%.1f".format(liveOffsetNanos / 1_000_000.0)}ms.")
+                logger.debug("$debugLabel [reappear] live channel presented first frame; handoff at ${"%.1f".format(liveOffsetNanos / 1_000_000.0)}ms.")
             }, onEos = { stderr, normalEos -> abortIncoming(generation, "eos=$normalEos stderr=${MediaUtil.truncate(stderr)}") },
                 parkFlag = parkFlag)
 
@@ -402,7 +402,7 @@ internal class PlaybackSessionManager(
                 discardChannelBlocking(channel)
                 return false
             }
-            logger.info("$debugLabel [reappear] live attached ${w}x$h at ${"%.1f".format(liveOffsetNanos / 1_000_000.0)}ms, warming up...")
+            logger.debug("$debugLabel [reappear] live attached ${w} x $h at ${"%.1f".format(liveOffsetNanos / 1_000_000.0)}ms, warming up...")
             true
         } catch (e: IOException) {
             logger.error("$debugLabel [reappear] failed to attach live after replay", e)
@@ -455,7 +455,7 @@ internal class PlaybackSessionManager(
         parkStartNanos = System.nanoTime()
         parkFlag.set(true)
         active?.pipe?.trimForPark()
-        logger.info("$debugLabel [park] session parked warm at ${"%.1f".format(frozenPositionNanos / 1_000_000.0)}ms.")
+        logger.debug("$debugLabel [park] session parked warm at ${"%.1f".format(frozenPositionNanos / 1_000_000.0)}ms.")
         return true
     }
 
@@ -466,7 +466,7 @@ internal class PlaybackSessionManager(
         parkFlag.set(false)
         frozenPositionNanos = -1L
         clock.addPausedDuration(System.nanoTime() - parkStartNanos)
-        logger.info("$debugLabel [park] session un-parked; resuming from frozen position.")
+        logger.debug("$debugLabel [park] session un-parked; resuming from frozen position.")
     }
 
     /** True while the session is parked warm. */
@@ -531,7 +531,7 @@ internal class PlaybackSessionManager(
             incoming.also { incoming = channel }
         }
         previous?.let {
-            if (MediaPlayer.DEBUG) logger.info("$debugLabel Superseding incoming video handoff #${generation - 1}.")
+            if (MediaPlayer.DEBUG) logger.debug("$debugLabel Superseding incoming video handoff #${generation - 1}.")
             discardChannelAsync(it)
         }
         if (terminated.get()) {
@@ -546,14 +546,14 @@ internal class PlaybackSessionManager(
         try {
             // No latch / audio gate: the clock is already running. EOS aborts only this handoff
             if (MediaPlayer.DEBUG) {
-                logger.info(
+                logger.debug(
                     "$debugLabel Starting incoming video handoff #$generation ${w}x$h " +
                             "at ${"%.1f".format(offsetNanos / 1_000_000.0)}ms.",
                 )
             }
             channel.launch(ffmpeg, streamSet, w, h, offsetNanos, hwAccel, onFirstFrame = {
                 clock.markFirstFrame()
-                if (MediaPlayer.DEBUG) logger.info("$debugLabel Incoming video handoff #$generation presented its first frame.")
+                if (MediaPlayer.DEBUG) logger.debug("$debugLabel Incoming video handoff #$generation presented its first frame.")
             }, onEos = { stderr, normalEos -> abortIncoming(generation, "eos=$normalEos stderr=${MediaUtil.truncate(stderr)}") },
                 parkFlag = parkFlag)
             val shouldDiscard = synchronized(switchLock) {
@@ -597,7 +597,7 @@ internal class PlaybackSessionManager(
             old = active
             active = inc
         }
-        if (MediaPlayer.DEBUG) logger.info("$debugLabel Promoted incoming video handoff #$generation.")
+        if (MediaPlayer.DEBUG) logger.debug("$debugLabel Promoted incoming video handoff #$generation.")
         updateRawFrameSink() // Re-attach popout / preview to the new live channel
         old?.let { discardChannelAsync(it) }
         return true
@@ -608,7 +608,7 @@ internal class PlaybackSessionManager(
         val inc = synchronized(switchLock) {
             if (incomingGeneration != generation) null else incoming.also { incoming = null }
         } ?: return
-        if (MediaPlayer.DEBUG) logger.info("$debugLabel Aborted incoming video handoff #$generation ($reason).")
+        if (MediaPlayer.DEBUG) logger.debug("$debugLabel Aborted incoming video handoff #$generation ($reason).")
         discardChannelAsync(inc)
         onQualitySwitchAborted()
     }

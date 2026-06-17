@@ -390,7 +390,7 @@ class MediaPlayer(
         var success = false
         try {
             val cached = preparedBootstrapRef.getAndSet(null)
-            if (cached != null) logger.info("$debugLabel [reappear] reusing cached prepared streams; skipping prepare().")
+            if (cached != null) logger.debug("$debugLabel [reappear] reusing cached prepared streams; skipping prepare().")
             val prepared = cached ?: MediaPreparationService.prepare(youtubeUrl, lang, displayScreen.quality)
             if (terminated.get()) return
 
@@ -403,8 +403,8 @@ class MediaPlayer(
             retryPolicy.reset()
 
             if (DEBUG) {
-                logger.info("$debugLabel video=${prepared.streamSet.currentVideo} audio=${prepared.streamSet.currentAudio}")
-                logger.info("$debugLabel live=$liveStream seekable=$seekable dur=$durationHintNanos")
+                logger.debug("$debugLabel video=${prepared.streamSet.currentVideo} audio=${prepared.streamSet.currentAudio}")
+                logger.debug("$debugLabel live=$liveStream seekable=$seekable dur=$durationHintNanos")
                 stats.start()
             }
             success = true
@@ -434,13 +434,13 @@ class MediaPlayer(
         // Replay-only video may already be on screen (started at construction): attach the live source
         // and hand off by PTS instead of cold-starting, so the picture never blanks.
         val bootstrap = replayBootstrapRef.getAndSet(null)
-        logger.info(
+        logger.debug(
             "$debugLabel [reappear] startStreams offset=${"%.1f".format(offsetNanos / 1_000_000.0)}ms " +
                     "replayActive=${replayVideoActive.get()} bootstrap=${bootstrap != null} live=$liveStream",
         )
         if (replayVideoActive.get() && bootstrap != null && !liveStream) {
             if (attachLiveToReplay(streamSet, bootstrap.positionNanos)) return
-            logger.info("$debugLabel [reappear] attachLiveToReplay failed; falling back to cold start.")
+            logger.debug("$debugLabel [reappear] attachLiveToReplay failed; falling back to cold start.")
             replayVideoActive.set(false) // Attach failed: fall through to a normal cold start
         }
         // A full restart decodes at the current texture's dimensions, so any staged quality handoff
@@ -468,7 +468,7 @@ class MediaPlayer(
         if (sessionManager.startReplayVideoOnly(boot.snapshot, resume, boot.positionNanos, boot.audioPcm)) {
             replayVideoActive.set(true)
             state.set(PlaybackState.PLAYING)
-            logger.info("$debugLabel Replay bootstrap shown instantly, resuming at ${"%.1f".format(resume / 1_000_000.0)}ms.")
+            logger.debug("$debugLabel Replay bootstrap shown instantly, resuming at ${"%.1f".format(resume / 1_000_000.0)}ms.")
         }
         // On failure the bootstrap is left in place (replayVideoActive stays false): startStreams then
         // cold-starts at the saved position instead of attaching live to a replay that never started.
@@ -491,7 +491,7 @@ class MediaPlayer(
         }
         state.set(PlaybackState.PLAYING)
         watchdog.start()
-        logger.info("$debugLabel Attached live after replay at ${"%.1f".format(liveOffsetNanos / 1_000_000.0)}ms.")
+        logger.debug("$debugLabel Attached live after replay at ${"%.1f".format(liveOffsetNanos / 1_000_000.0)}ms.")
         return true
     }
 
@@ -631,7 +631,7 @@ class MediaPlayer(
         val ss = streams ?: return
         val target = desired.targetHeight ?: return
         if (target == lastQuality) {
-            if (DEBUG) logger.info("$debugLabel Quality switch no-op target=$target last=$lastQuality.")
+            if (DEBUG) logger.debug("$debugLabel Quality switch no-op target=$target last=$lastQuality.")
             return
         }
         val newSs = MediaStreamSelector.switchQuality(ss, target, lang) ?: return

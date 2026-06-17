@@ -246,7 +246,7 @@ internal class FrameSurface(
             val maxMs = uploadMaxNs / 1_000_000.0
             val drops = readyDrops.getAndSet(0)
             val skipped = skippedUploads
-            logger.info(
+            logger.debug(
                 "$debugLabel $label ${w}x$h avg=${"%.3f".format(avgMs)}ms " +
                         "min=${"%.3f".format(minMs)}ms max=${"%.3f".format(maxMs)}ms " +
                         "readyDrops=$drops skipped=$skipped pool=${reusableFrameBuffers.size}",

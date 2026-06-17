@@ -450,9 +450,9 @@ class DisplayScreen(
                 if (mp.promoteIncomingVideo()) {
                     textureResource.promotePending()
                     hasEverRendered = true
-                    if (MediaPlayer.DEBUG) logger.info("$uuid promoted quality handoff texture ${textureResource.width} x ${textureResource.height}.")
+                    if (MediaPlayer.DEBUG) logger.debug("$uuid promoted quality handoff texture ${textureResource.width} x ${textureResource.height}.")
                 } else {
-                    if (MediaPlayer.DEBUG) logger.info("$uuid discarded staged quality handoff after incoming abort.")
+                    if (MediaPlayer.DEBUG) logger.debug("$uuid discarded staged quality handoff after incoming abort.")
                     cancelQualityHandoff()
                 }
             }
@@ -632,7 +632,7 @@ class DisplayScreen(
         val prepared = mp.capturePreparedMedia()
         DisplayReplayCache.put(uuid, url, position, snapshot, audioPcm, prepared)
         val elapsedMs = (System.nanoTime() - started) / 1_000_000.0
-        logger.info(
+        logger.debug(
             "$uuid captured replay snapshot bytes=${snapshot.size} audioPcm=${audioPcm?.size ?: 0}B at " +
                     "${"%.1f".format(position / 1_000_000.0)}ms in ${"%.1f".format(elapsedMs)}ms.",
         )

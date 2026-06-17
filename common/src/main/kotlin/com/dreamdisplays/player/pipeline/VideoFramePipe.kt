@@ -202,7 +202,7 @@ internal class VideoFramePipe(private val debugLabel: String) : FramePipe {
                     if (!firstFrame) {
                         firstFrame = true
                         onFirstFrame()
-                        if (MediaPlayer.DEBUG) logger.info("$debugLabel First frame ${w} x ${h}.")
+                        if (MediaPlayer.DEBUG) logger.debug("$debugLabel First frame ${w} x ${h}.")
                     }
 
                     videoPts += frameNs

@@ -142,7 +142,7 @@ object YtDlp {
         val viaNewPipe = NewPipeResolver.fetch(videoUrl)
         if (offersQualityLadder(viaNewPipe)) return viaNewPipe
         if (viaNewPipe.isNotEmpty()) {
-            logger.info(
+            logger.debug(
                 "NewPipe returned no quality ladder for $videoUrl " +
                         "(heights=${viaNewPipe.filter { it.hasVideo() }.mapNotNull { it.height }.distinct()}); " +
                         "falling back to yt-dlp."

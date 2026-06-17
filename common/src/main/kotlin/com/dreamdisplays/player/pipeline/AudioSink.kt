@@ -198,14 +198,14 @@ internal class AudioSink(private val debugLabel: String) {
                     return
                 }
                 if (terminated.get() || stopFlag.get()) return
-                logger.info("$debugLabel [audio] line open, waiting for start gate...")
+                logger.debug("$debugLabel [audio] line open, waiting for start gate...")
                 if (!awaitStartGate(startGate, terminated, stopFlag)) {
-                    logger.info("$debugLabel [audio] aborted before start gate opened (terminated/stopped).")
+                    logger.debug("$debugLabel [audio] aborted before start gate opened (terminated/stopped).")
                     return
                 }
                 ln.start()
                 line = ln
-                logger.info("$debugLabel [audio] start gate passed, line started — audio is now playing.")
+                logger.debug("$debugLabel [audio] start gate passed, line started — audio is now playing.")
                 pumpLive(input, ln, terminated, stopFlag)
             }
         } catch (e: IOException) {
@@ -248,15 +248,15 @@ internal class AudioSink(private val debugLabel: String) {
             ln.start()
             line = ln
             val cachedSec = prelude.size / (SAMPLE_RATE * BYTES_PER_FRAME).toDouble()
-            logger.info("$debugLabel [audio] bridge line started; playing ${"%.2f".format(cachedSec)}s cached prelude.")
+            logger.debug("$debugLabel [audio] bridge line started; playing ${"%.2f".format(cachedSec)}s cached prelude.")
             // 1) Cached prelude — paced naturally by the line (not ring-cached: already-played audio).
             writePrelude(ln, prelude, terminated, stopFlag)
             // 2) Continue with the live PCM on the SAME line: sample-continuous, no flush, no second line.
             val proc = awaitLiveInput(terminated, stopFlag) ?: run {
-                logger.info("$debugLabel [audio] bridge ended before live input attached.")
+                logger.debug("$debugLabel [audio] bridge ended before live input attached.")
                 return
             }
-            logger.info("$debugLabel [audio] bridge handing off cached -> live on one line.")
+            logger.debug("$debugLabel [audio] bridge handing off cached -> live on one line.")
             proc.inputStream.use { input -> pumpLive(input, ln, terminated, stopFlag) }
         } catch (e: Exception) {
             if (!terminated.get() && !stopFlag.get()) {
@@ -314,7 +314,7 @@ internal class AudioSink(private val debugLabel: String) {
                 if (firstChunk) logger.warn("$debugLabel [audio] no PCM data from ffmpeg (EOF on first read).")
                 break
             }
-            if (firstChunk) { logger.info("$debugLabel [audio] first PCM chunk received ($n bytes)."); firstChunk = false }
+            if (firstChunk) { logger.debug("$debugLabel [audio] first PCM chunk received ($n bytes)."); firstChunk = false }
             ringPush(chunk, n) // Cache raw PCM (pre-volume) for the reappearance audio bridge
             MediaBufferEffects.applyVolumeS16LE(chunk, n, currentVolume)
             writeFully(ln, chunk, n, terminated, stopFlag)
