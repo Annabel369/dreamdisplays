@@ -155,51 +155,18 @@ object ScreenRenderer : ClientRenderService {
     }
 
     private object ImmediateRenderCompat {
-        private val tesselatorClass: Class<*>? by lazy {
-            runCatching { Class.forName("com.mojang.blaze3d.vertex.Tesselator") }.getOrNull()
-        }
-
-        private val stagedVertexBufferClass: Class<*>? by lazy {
-            runCatching { Class.forName("net.minecraft.client.renderer.StagedVertexBuffer") }.getOrNull()
-        }
-
         fun draw(stack: PoseStack, type: RenderType, appendVertices: QuadAppender) {
-            when {
-                stagedVertexBufferClass != null -> draw262(stack, type, appendVertices)
-                tesselatorClass != null -> drawLegacy(stack, type, appendVertices, tesselatorClass!!)
-                else -> drawBufferBuilder(stack, type, appendVertices)
-            }
+            //? if >=26 {
+            draw262(stack, type, appendVertices)
+            //?} else
+            /*run {
+                val builder = Tesselator.getInstance().begin(type.mode(), type.format())
+                appendVertices(stack.last(), builder)
+                type.draw(builder.buildOrThrow())
+            }*/
         }
 
-        private fun drawLegacy(
-            stack: PoseStack,
-            type: RenderType,
-            appendVertices: QuadAppender,
-            tesselatorClass: Class<*>,
-        ) {
-            val tesselator = tesselatorClass.getMethod("getInstance").invoke(null)
-            val mode = type.javaClass.getMethod("mode").invoke(type)
-            val builder = tesselatorClass
-                .getMethod("begin", mode.javaClass, VertexFormat::class.java)
-                .invoke(tesselator, mode, type.format()) as VertexConsumer
-            appendVertices(stack.last(), builder)
-            val mesh = builder.javaClass.getMethod("buildOrThrow").invoke(builder)
-            val meshDataClass = Class.forName("com.mojang.blaze3d.vertex.MeshData")
-            type.javaClass.getMethod("draw", meshDataClass).invoke(type, mesh)
-        }
-
-        private fun drawBufferBuilder(stack: PoseStack, type: RenderType, appendVertices: QuadAppender) {
-            val mode = type.javaClass.getMethod("mode").invoke(type)
-            val builderClass = Class.forName("com.mojang.blaze3d.vertex.BufferBuilder")
-            val builder = builderClass
-                .getConstructor(mode.javaClass, VertexFormat::class.java, Int::class.javaPrimitiveType)
-                .newInstance(mode, type.format(), 1536) as VertexConsumer
-            appendVertices(stack.last(), builder)
-            val mesh = builder.javaClass.getMethod("buildOrThrow").invoke(builder)
-            val meshDataClass = Class.forName("com.mojang.blaze3d.vertex.MeshData")
-            type.javaClass.getMethod("draw", meshDataClass).invoke(type, mesh)
-        }
-
+        //? if >=26 {
         private fun draw262(stack: PoseStack, type: RenderType, appendVertices: QuadAppender) {
             val stagedClass = Class.forName("net.minecraft.client.renderer.StagedVertexBuffer")
             val staged = stagedClass
@@ -222,5 +189,6 @@ object ScreenRenderer : ClientRenderService {
                 (staged as AutoCloseable).close()
             }
         }
+        //?}
     }
 }
