@@ -66,6 +66,10 @@ internal object RenderPipelineCompat {
             withSampler.invoke(builder, sampler)
         }
 
+        //? if <26 {
+        /*val modeClass = VertexFormat.Mode::class.java
+        val quads = VertexFormat.Mode.QUADS*/
+        //?} else
         val modeClass = Class.forName("com.mojang.blaze3d.vertex.VertexFormat\$Mode")
         @Suppress("UNCHECKED_CAST")
         val quads = java.lang.Enum.valueOf(modeClass as Class<out Enum<*>>, "QUADS")
