@@ -15,8 +15,10 @@ import java.util.*
 import org.bukkit.Location
 import org.bukkit.entity.Player
 
-/** Utility for sending moderation reports to a Discord webhook. */
-// TODO: add rate limiting to prevent spam
+/**
+ * Utility for sending moderation reports to a Discord webhook. Rate limiting (per-display and
+ * per-reporter) is enforced upstream by [DisplayManager] before any request reaches here.
+ */
 object ReporterUtil {
     private val httpClient: HttpClient by lazy { HttpClient.newHttpClient() }
     private const val EMBED_COLOR = 0x2F3136

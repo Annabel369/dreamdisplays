@@ -44,6 +44,7 @@ import java.util.function.Consumer
 @NullMarked object DisplayManager {
     private val displays: MutableMap<UUID, DisplayData> = ConcurrentHashMap()
     private val reportTime: MutableMap<UUID, Long> = ConcurrentHashMap()
+    private val reporterTime: MutableMap<UUID, Long> = ConcurrentHashMap()
 
     /** Returns the display registered under [id], or null if none exists. */
     @JvmStatic fun getDisplayData(id: UUID?): DisplayData? = displays[id]
@@ -79,14 +80,18 @@ import java.util.function.Consumer
     }
 
     /**
-     * Checks whether the report cooldown for [id] is still active. If not, records the current
-     * time as the latest report timestamp and returns false (caller may proceed). Returns true
-     * when the request should be silently dropped.
+     * Checks whether a report from [reporterId] about display [id] should be rate-limited. Drops
+     * the request when either the per-display or the per-reporter cooldown is still active; the
+     * per-reporter limit stops an attacker from amplifying the webhook by spreading reports across
+     * many displays. Records both timestamps and returns false only when the report may proceed.
      */
-    private fun isReportThrottled(id: UUID, cooldownMs: Long): Boolean {
+    private fun isReportThrottled(id: UUID, reporterId: UUID, cooldownMs: Long): Boolean {
+        val now = System.currentTimeMillis()
         val lastReport = reportTime.getOrPut(id) { 0L }
-        if (System.currentTimeMillis() - lastReport < cooldownMs) return true
-        reportTime[id] = System.currentTimeMillis()
+        val lastReporter = reporterTime.getOrPut(reporterId) { 0L }
+        if (now - lastReport < cooldownMs || now - lastReporter < cooldownMs) return true
+        reportTime[id] = now
+        reporterTime[reporterId] = now
         return false
     }
 
@@ -184,7 +189,7 @@ import java.util.function.Consumer
      */
     @PaperOnly @JvmStatic fun report(id: UUID, player: Player) {
         val displayData = displays[id] as? PaperDisplayData ?: return
-        if (isReportThrottled(id, config.settings.reportCooldown.toLong())) {
+        if (isReportThrottled(id, player.uniqueId, config.settings.reportCooldown.toLong())) {
             MessageUtil.sendMessage(player, "reportTooQuickly")
             return
         }
@@ -313,7 +318,7 @@ import java.util.function.Consumer
     @FabricOnly fun report(id: UUID, player: ServerPlayer, server: MinecraftServer) {
         val displayData = displays[id] as? FabricDisplayData ?: return
         val cfg = Server.config
-        if (isReportThrottled(id, cfg.settings.reportCooldown)) {
+        if (isReportThrottled(id, player.uuid, cfg.settings.reportCooldown)) {
             MessageUtil.sendMessage(player, "reportTooQuickly")
             return
         }
