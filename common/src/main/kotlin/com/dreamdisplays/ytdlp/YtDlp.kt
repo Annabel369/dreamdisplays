@@ -63,6 +63,7 @@ object YtDlp {
         PREWARM_EXECUTOR.submit {
             try {
                 NewPipeResolver.ensureInitialized()
+                NewPipeResolver.prewarmPlayer()
                 YtDlpBinary.resolve(PREWARM_EXECUTOR)
                 cookies.prewarm()
             } catch (e: IOException) {

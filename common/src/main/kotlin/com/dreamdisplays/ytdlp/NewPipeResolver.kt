@@ -5,15 +5,17 @@ import com.dreamdisplays.media.api.MediaMetadata
 import com.dreamdisplays.media.api.MediaResolver
 import com.dreamdisplays.media.api.MediaSource
 import com.dreamdisplays.media.api.ResolvedMedia
+import com.dreamdisplays.media.api.YouTubeUrls
 import kotlin.time.Duration.Companion.nanoseconds
 import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.downloader.Downloader
 import org.schabi.newpipe.extractor.downloader.Request
 import org.schabi.newpipe.extractor.downloader.Response
+import org.schabi.newpipe.extractor.services.youtube.YoutubeJavaScriptPlayerManager
 import org.schabi.newpipe.extractor.stream.AudioStream
 import org.schabi.newpipe.extractor.stream.DeliveryMethod
 import org.schabi.newpipe.extractor.stream.Stream
-import org.schabi.newpipe.extractor.stream.StreamInfo
+import org.schabi.newpipe.extractor.stream.StreamExtractor
 import org.schabi.newpipe.extractor.stream.StreamType
 import org.schabi.newpipe.extractor.stream.VideoStream
 import org.slf4j.LoggerFactory
@@ -22,6 +24,7 @@ import java.net.InetSocketAddress
 import java.net.Proxy
 import java.net.URI
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.zip.GZIPInputStream
 import kotlin.math.max
@@ -40,6 +43,14 @@ object NewPipeResolver : MediaResolver {
 
     private val initialized = AtomicBoolean(false)
 
+    /** How long a resolved (or unresolvable) video is reused before `NewPipeExtractor` is hit again. */
+    private val POSITIVE_TTL_NANOS = 60L * 1_000_000_000L
+    private val NEGATIVE_TTL_NANOS = 20L * 1_000_000_000L
+    private const val MAX_CACHE_ENTRIES = 256
+
+    /** Recently resolved videos, keyed by video id (falling back to the full URL). */
+    private val cache = ConcurrentHashMap<String, CacheEntry>()
+
     override val priority: Int = 10
 
     override fun canResolve(source: MediaSource): Boolean = source is MediaSource.YouTube
@@ -53,32 +64,28 @@ object NewPipeResolver : MediaResolver {
             is MediaSource.DirectStream -> source.streamUrl
             is MediaSource.Twitch -> throw UnsupportedOperationException("Twitch not supported by NewPipeResolver")
         }
-        val info = StreamInfo.getInfo(url)
-        val isLive = info.streamType == StreamType.LIVE_STREAM ||
-                info.streamType == StreamType.AUDIO_LIVE_STREAM ||
-                info.streamType == StreamType.POST_LIVE_STREAM
-        val metadata = MediaMetadata(
-            title = info.name.ifBlank { null },
-            uploader = info.uploaderName.ifBlank { null },
-            duration = if (info.duration > 0) durationToNanos(info.duration).nanoseconds else null,
-            thumbnailUrl = info.thumbnails.firstOrNull()?.url,
-            viewCount = info.viewCount.takeIf { it > 0 },
-            likeCount = info.likeCount.takeIf { it > 0 },
-            uploadDate = null,
-        )
-        val streams = mapStreams(info)
+        val resolved = resolveCached(url)
+            ?: throw IllegalStateException("NewPipe could not resolve $url; deferring to yt-dlp")
         // YouTube often exposes only the muxed 360p track to this client (adaptive tracks are
-        // SABR/DASH-only); failing here lets the resolver chain fall through to yt-dlp, which
+        // SABR / DASH-only); failing here lets the resolver chain fall through to yt-dlp, which
         // still gets the full quality ladder.
-        if (!isLive && !offersQualityLadder(streams)) {
-            val heights = streams.filter { it.hasVideo() }.mapNotNull { it.height }.distinct()
+        if (!resolved.isLive && !offersQualityLadder(resolved.streams)) {
+            val heights = resolved.streams.filter { it.hasVideo() }.mapNotNull { it.height }.distinct()
             throw IllegalStateException("NewPipe returned no quality ladder (heights=$heights); deferring to yt-dlp")
         }
         return ResolvedMedia(
-            streams = streams.map { it.toMediaStream() },
-            metadata = metadata,
-            isLive = isLive,
-            isSeekable = !isLive && info.duration > 0,
+            streams = resolved.streams.map { it.toMediaStream() },
+            metadata = MediaMetadata(
+                title = resolved.title,
+                uploader = resolved.uploader,
+                duration = resolved.durationNanos.takeIf { it > 0L }?.nanoseconds,
+                thumbnailUrl = resolved.thumbnailUrl,
+                viewCount = resolved.viewCount,
+                likeCount = resolved.likeCount,
+                uploadDate = null,
+            ),
+            isLive = resolved.isLive,
+            isSeekable = resolved.isSeekable,
         )
     }
 
@@ -104,48 +111,131 @@ object NewPipeResolver : MediaResolver {
     }
 
     /**
+     * Fetches and compiles YouTube's base JavaScript player ahead of the first real resolution.
+     * This moves the one-time costs off the playback critical path: the `base.js` download and the
+     * Rhino parse of both the signature-timestamp and n-parameter deobfuscation functions, all of
+     * which `NewPipeExtractor` caches globally once warmed. Best-effort; failures are ignored.
+     */
+    fun prewarmPlayer() {
+        if (!initialized.get()) return
+        try {
+            YoutubeJavaScriptPlayerManager.getSignatureTimestamp("")
+            YoutubeJavaScriptPlayerManager.getUrlWithThrottlingParameterDeobfuscated(
+                "",
+                "https://dummy.googlevideo.com/videoplayback?n=0000000000000000",
+            )
+        } catch (e: Throwable) {
+            logger.debug("NewPipe player prewarm skipped: {}", e.message)
+        }
+    }
+
+    /**
      * Resolves the playable streams for [videoUrl] via NewPipeExtractor, mapped to [YtStream].
      * Returns an empty list on any failure (caller falls back to `yt-dlp`).
      */
     fun fetch(videoUrl: String): List<YtStream> {
         ensureInitialized()
         if (!initialized.get()) return emptyList()
+        return resolveCached(videoUrl)?.streams ?: emptyList()
+    }
+
+    /**
+     * Returns the cached resolution for [url] if still fresh, otherwise resolves it once and caches
+     * the result. A `null` result (`NewPipeExtractor` declined or failed) is cached too, with a shorter TTL, so
+     * the immediate [resolve] -> [fetch] retry for the same video does not pay a second network round.
+     */
+    private fun resolveCached(url: String): Resolved? {
+        val key = YouTubeUrls.extractVideoId(url) ?: url
+        val now = System.nanoTime()
+        cache[key]?.let { if (now < it.expiresAtNanos) return it.value }
+
+        val resolved = doExtract(url)
+        val ttl = if (resolved != null) POSITIVE_TTL_NANOS else NEGATIVE_TTL_NANOS
+        pruneIfNeeded(now)
+        cache[key] = CacheEntry(resolved, now + ttl)
+        return resolved
+    }
+
+    /** Drops expired entries (and, if still over the cap, clears the cache) before inserting a new one. */
+    private fun pruneIfNeeded(now: Long) {
+        if (cache.size < MAX_CACHE_ENTRIES) return
+        cache.entries.removeIf { now >= it.value.expiresAtNanos }
+        if (cache.size >= MAX_CACHE_ENTRIES) cache.clear()
+    }
+
+    /**
+     * Drives the [StreamExtractor] directly for [url]: a single [StreamExtractor.fetchPage] followed
+     * by reads of only the stream lists and the handful of metadata fields we map. Each metadata read
+     * is guarded individually so one bad field never sinks the whole resolution. Returns `null` when
+     * no usable stream could be extracted.
+     */
+    private fun doExtract(url: String): Resolved? {
         return try {
-            mapStreams(StreamInfo.getInfo(videoUrl))
+            val service = NewPipe.getServiceByUrl(url)
+            val extractor = service.getStreamExtractor(url)
+            extractor.fetchPage()
+
+            val streamType = safe { extractor.streamType } ?: StreamType.VIDEO_STREAM
+            val live = streamType == StreamType.LIVE_STREAM ||
+                    streamType == StreamType.AUDIO_LIVE_STREAM ||
+                    streamType == StreamType.POST_LIVE_STREAM
+            val durationNanos = durationToNanos(safe { extractor.length } ?: 0L)
+            val seekable = !live && durationNanos > 0L
+
+            val streams = mapStreams(extractor, live, seekable, durationNanos)
+            if (streams.isEmpty()) return null
+
+            Resolved(
+                streams = streams,
+                title = safe { extractor.name }?.takeIf { it.isNotBlank() },
+                uploader = safe { extractor.uploaderName }?.takeIf { it.isNotBlank() },
+                durationNanos = durationNanos,
+                thumbnailUrl = safe { extractor.thumbnails.firstOrNull()?.url },
+                viewCount = safe { extractor.viewCount }?.takeIf { it > 0L },
+                likeCount = safe { extractor.likeCount }?.takeIf { it > 0L },
+                isLive = live,
+                isSeekable = seekable,
+            )
         } catch (e: Throwable) {
-            logger.debug("NewPipe fetch failed for {}: {}", videoUrl, e.message)
-            emptyList()
+            logger.debug("NewPipeExtractor fetch failed for {}: {}", url, e.message)
+            null
         }
     }
 
-    /** Maps a NewPipeExtractor [StreamInfo] into the flat [YtStream] list the player pipeline expects. */
-    private fun mapStreams(info: StreamInfo): List<YtStream> {
-        val live = info.streamType == StreamType.LIVE_STREAM ||
-                info.streamType == StreamType.AUDIO_LIVE_STREAM ||
-                info.streamType == StreamType.POST_LIVE_STREAM
-        val durationNanos = durationToNanos(info.duration)
-        val seekable = !live && durationNanos > 0L
-
+    /** Maps the directly-fetched [extractor]'s stream lists into the flat [YtStream] list the player pipeline expects. */
+    private fun mapStreams(
+        extractor: StreamExtractor,
+        live: Boolean,
+        seekable: Boolean,
+        durationNanos: Long,
+    ): List<YtStream> {
         val out = ArrayList<YtStream>()
         // Muxed progressive streams (video + audio in one URL)
-        for (s in info.videoStreams) {
+        for (s in safe { extractor.videoStreams }.orEmpty()) {
             if (!acceptable(s)) continue
             out.add(videoToYt(s, hasAudio = true, live = live, seekable = seekable, durationNanos = durationNanos))
         }
         // Adaptive video-only streams
-        for (s in info.videoOnlyStreams) {
+        for (s in safe { extractor.videoOnlyStreams }.orEmpty()) {
             if (!acceptable(s)) continue
             out.add(videoToYt(s, hasAudio = false, live = live, seekable = seekable, durationNanos = durationNanos))
         }
         // Adaptive audio-only streams
-        for (s in info.audioStreams) {
+        for (s in safe { extractor.audioStreams }.orEmpty()) {
             if (!acceptable(s)) continue
             out.add(audioToYt(s, live = live, seekable = seekable, durationNanos = durationNanos))
         }
         return out
     }
 
-    /** Converts a NewPipeExtractor [VideoStream] to a [YtStream]. */
+    /** Runs [block], swallowing any extractor failure and returning null so optional fields degrade gracefully. */
+    private inline fun <T> safe(block: () -> T): T? = try {
+        block()
+    } catch (_: Throwable) {
+        null
+    }
+
+    /** Converts a `NewPipeExtractor` [VideoStream] to a [YtStream]. */
     @Suppress("DEPRECATION")
     private fun videoToYt(
         s: VideoStream,
@@ -225,6 +315,22 @@ object NewPipeResolver : MediaResolver {
         if (nanos >= Long.MAX_VALUE.toDouble()) return Long.MAX_VALUE
         return max(0L, round(nanos).toLong())
     }
+
+    /** Fully resolved video, cached and shared between the [resolve] and [fetch] entry points. */
+    private class Resolved(
+        val streams: List<YtStream>,
+        val title: String?,
+        val uploader: String?,
+        val durationNanos: Long,
+        val thumbnailUrl: String?,
+        val viewCount: Long?,
+        val likeCount: Long?,
+        val isLive: Boolean,
+        val isSeekable: Boolean,
+    )
+
+    /** A cached [Resolved] (or `null` for a known-unresolvable video) with its monotonic expiry. */
+    private class CacheEntry(val value: Resolved?, val expiresAtNanos: Long)
 
     /**
      * Minimal [Downloader] implementation over [HttpURLConnection], honoring the configured proxy
