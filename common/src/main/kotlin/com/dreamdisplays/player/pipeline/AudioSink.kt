@@ -394,11 +394,12 @@ internal class AudioSink(private val debugLabel: String) {
         return null
     }
 
-    /** Drains the audio process's stderr and logs anything ffmpeg emits (it runs at -loglevel error). */
+    /** Drains the audio process's stderr and logs each line FFmpeg emits as it arrives (it runs at -loglevel error). */
     private fun drainStderr(proc: Process) = daemon({
         try {
-            val text = proc.errorStream.bufferedReader().readText()
-            if (text.isNotBlank()) logger.warn("$debugLabel [audio] ffmpeg stderr: ${text.trim()}")
+            proc.errorStream.bufferedReader().forEachLine { line ->
+                if (line.isNotBlank()) logger.warn("$debugLabel [audio] FFmpeg stderr: ${line.trim()}.")
+            }
         } catch (_: IOException) {}
     }, "MediaPlayer-astderr").start()
 }
