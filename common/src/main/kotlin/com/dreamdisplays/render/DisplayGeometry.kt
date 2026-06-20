@@ -118,6 +118,14 @@ internal object DisplayGeometry {
         stack.mulPose(rotation)
     }
 
+    /**
+     * Nudges [stack] [amount] blocks toward the viewer along [facing]'s outward normal. Call this
+     * before [applyScreenTransform] to lift an overlay layer off the video plane: the transform's
+     * final `scale(w, h, 0)` flattens local z to zero, so coplanar quads can only be depth-separated
+     * by offsetting them in world space here, ahead of that scale.
+     */
+    fun liftTowardViewer(stack: PoseStack, facing: DisplayFacing, amount: Float) = moveForward(stack, facing, amount)
+
     /** Translates [stack] by [amount] blocks in the forward axis of [facing]. */
     private fun moveForward(stack: PoseStack, facing: DisplayFacing, amount: Float) {
         when (facing) {

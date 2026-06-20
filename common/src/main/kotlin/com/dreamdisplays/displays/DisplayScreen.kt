@@ -201,12 +201,33 @@ class DisplayScreen(
      * Reset by [createTexture] (full reallocation: new video, resize, backend restart).
      */
     @Transient @Volatile private var hasEverRendered = false
+    @Transient @Volatile private var firstFrameNanos = 0L
     @Transient @Volatile private var waitingForInitialTimeline = false
     var lang: String? = null
         private set
 
     val isVideoStarted: Boolean get() =
         !waitingForInitialTimeline && (hasEverRendered || mediaPlayer?.textureFilled() == true)
+
+    /** Marks that a frame has rendered, stamping the first-frame time so the appear fade-in can run. */
+    private fun markRendered() {
+        if (!hasEverRendered) firstFrameNanos = System.nanoTime()
+        hasEverRendered = true
+    }
+
+    /**
+     * Eased 0..1 fade applied to the video on its first appearance, so it ramps up from black instead
+     * of snapping in. Returns 1 (no fade) before the first frame, once the ramp is over, and for a
+     * seamless replay reappearance (which must not dim its already-good picture).
+     */
+    internal fun appearProgress(): Float {
+        val start = firstFrameNanos
+        if (start == 0L || mediaPlayer?.isResumingFromReplay() == true) return 1f
+        val dt = System.nanoTime() - start
+        if (dt >= APPEAR_FADE_NANOS) return 1f
+        val t = (dt.toFloat() / APPEAR_FADE_NANOS).coerceIn(0f, 1f)
+        return t * t * (3f - 2f * t) // Smoothstep
+    }
 
     val isPopoutActive: Boolean
         get() = popoutManager.isActive
@@ -277,6 +298,7 @@ class DisplayScreen(
 
     internal fun clearRenderedFrameForTimeline() {
         hasEverRendered = false
+        firstFrameNanos = 0L
         mediaPlayer?.clearFrame()
     }
 
@@ -444,7 +466,7 @@ class DisplayScreen(
         if (!textureResource.isYuv) shaderPackYuvFallbackRequested = false
         try {
             // The live channel always keeps drawing the current texture, so the picture never freezes
-            if (uploadLive(mp)) hasEverRendered = true
+            if (uploadLive(mp)) markRendered()
 
             // Quality switch: the new resolution warms up in a parallel channel. Feed its frames into
             // the staged texture; the instant the first one lands, promote channel and texture together
@@ -452,7 +474,7 @@ class DisplayScreen(
             if (textureResource.hasPending && mp.hasIncomingVideo() && uploadIncoming(mp)) {
                 if (mp.promoteIncomingVideo()) {
                     textureResource.promotePending()
-                    hasEverRendered = true
+                    markRendered()
                     if (MediaPlayer.DEBUG) logger.debug("$uuid promoted quality handoff texture ${textureResource.width} x ${textureResource.height}.")
                 } else {
                     if (MediaPlayer.DEBUG) logger.debug("$uuid discarded staged quality handoff after incoming abort.")
@@ -659,6 +681,7 @@ class DisplayScreen(
     /** Allocates (or reallocates) the GPU texture and render type for the current quality setting. */
     fun createTexture() {
         hasEverRendered = false
+        firstFrameNanos = 0L
         textureResource.allocate(width, height, parseQualityOrDefault())
     }
 
@@ -810,5 +833,8 @@ class DisplayScreen(
         private val logger = LoggerFactory.getLogger("DreamDisplays/DisplayScreen")
         private const val DEFAULT_QUALITY = 720
         private const val RESTORE_SEEK_TOLERANCE_NS = 250_000_000L
+
+        /** Duration of the first-frame fade-in (see [appearProgress]). */
+        private const val APPEAR_FADE_NANOS = 260_000_000L
     }
 }

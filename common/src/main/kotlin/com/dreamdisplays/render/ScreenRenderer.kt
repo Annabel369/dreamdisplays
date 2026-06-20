@@ -1,5 +1,6 @@
 package com.dreamdisplays.render
 
+import com.dreamdisplays.api.DisplayFacing
 import com.dreamdisplays.api.DisplayId
 import com.dreamdisplays.client.core.DreamServices
 import com.dreamdisplays.client.core.getOrNull
@@ -14,7 +15,6 @@ import com.mojang.blaze3d.vertex.*
 import net.minecraft.client.Camera
 import net.minecraft.client.renderer.rendertype.RenderType
 import net.minecraft.world.phys.Vec3
-import kotlin.math.abs
 import kotlin.math.sin
 
 /** Renders screens in the world. */
@@ -87,40 +87,110 @@ object ScreenRenderer : ClientRenderService {
         // Done here on the render thread instead of via mc.execute() per frame.
         displayScreen.fitTexture()
 
-        stack.pushPose()
-        DisplayGeometry.applyScreenTransform(stack, displayScreen.facing, displayScreen.width, displayScreen.height)
+        val facing = displayScreen.facing
+        val w = displayScreen.width
+        val h = displayScreen.height
 
         if (displayScreen.isVideoStarted && displayScreen.hasTexture && displayScreen.renderType != null) {
+            stack.pushPose()
+            DisplayGeometry.applyScreenTransform(stack, facing, w, h)
             renderGpuTexture(drawQuad, displayScreen)
-        } else if (displayScreen.fallbackRenderType != null) {
-            if (displayScreen.errored) {
-                renderColor(drawQuad, displayScreen.fallbackRenderType!!, 35, 5, 5, displayScreen.rotation)
-            } else {
-                val pulse = abs(sin(System.nanoTime() / 1_500_000_000.0 * Math.PI)).toFloat()
-                val v = (10 + pulse * 20).toInt()
-                renderColor(drawQuad, displayScreen.fallbackRenderType!!, v, v, v, displayScreen.rotation)
-            }
+            stack.popPose()
+        } else {
+            renderPlaceholder(stack, drawQuad, DisplayYuvRenderTypes.solidColorType(), facing, w, h, displayScreen.errored)
         }
-        stack.popPose()
     }
 
-    /** Draws a unit quad using the screen's GPU texture. */
+    /** Draws a unit quad using the screen's GPU texture, ramping up the first-appear fade. */
     private fun renderGpuTexture(drawQuad: QuadRenderer, displayScreen: DisplayScreen) {
-        val c = if (displayScreen.isYuvTexture) {
-            (displayScreen.brightness.coerceIn(0f, 2f) * 127.5f).toInt().coerceIn(0, 255)
+        val appear = displayScreen.appearProgress()
+        val base = if (displayScreen.isYuvTexture) {
+            displayScreen.brightness.coerceIn(0f, 2f) * 127.5f
         } else {
-            255
+            255f
         }
+        val c = (base * appear).toInt().coerceIn(0, 255)
         drawQuad(displayScreen.renderType!!) { pose, builder ->
             appendQuad(pose, builder, c, c, c, displayScreen.rotation)
         }
     }
 
-    /** Draws a unit quad filled with a solid RGB color (used for loading / error state). */
-    private fun renderColor(drawQuad: QuadRenderer, type: RenderType, r: Int, g: Int, b: Int, rotation: Int) {
-        drawQuad(type) { pose, builder ->
-            appendQuad(pose, builder, r, g, b, rotation)
+    /** Depth-layer spacing between placeholder elements, in blocks toward the viewer (see [drawLayer]). */
+    private const val OVERLAY_LIFT = 0.01f
+
+    /**
+     * Loading / error placeholder. Loading is a faintly breathing dark backdrop with an indeterminate
+     * progress bar near the bottom — a track plus an accent segment that sweeps left to right; error is
+     * a dark red backdrop with a static red bar. Each element sits on its own depth layer so they read
+     * cleanly instead of z-fighting or blinking in place.
+     */
+    private fun renderPlaceholder(
+        stack: PoseStack, drawQuad: QuadRenderer, type: RenderType,
+        facing: DisplayFacing, w: Int, h: Int, error: Boolean,
+    ) {
+        // Backdrop on the screen plane.
+        drawLayer(stack, facing, w, h, 0f) {
+            val (r, g, b) = if (error) {
+                Triple(28, 6, 6)
+            } else {
+                val breathe = (sin(System.nanoTime() / 2_000_000_000.0 * 2.0 * Math.PI).toFloat() + 1f) * 0.5f
+                val v = (8 + breathe * 6f).toInt()
+                Triple(v, v, v)
+            }
+            drawQuad(type) { pose, vb -> appendRect(pose, vb, 0f, 0f, 1f, 1f, r, g, b) }
         }
+
+        val y0 = 0.045f
+        val y1 = 0.075f
+        val x0 = 0.06f
+        val x1 = 0.94f
+
+        // Bar track, lifted off the backdrop.
+        drawLayer(stack, facing, w, h, OVERLAY_LIFT) {
+            val (r, g, b) = if (error) Triple(120, 30, 30) else Triple(22, 24, 34)
+            drawQuad(type) { pose, vb -> appendRect(pose, vb, x0, y0, x1, y1, r, g, b) }
+        }
+        if (error) return
+
+        // Accent segment sweeping across the track, clipped at the ends so it grows in and shrinks out,
+        // lifted again so it never fights the track.
+        val period = 1_300_000_000L
+        val phase = (System.nanoTime() % period).toFloat() / period
+        val segW = 0.28f
+        val travel = (x1 - x0) + segW
+        val segStart = x0 - segW + travel * phase
+        val sx0 = segStart.coerceIn(x0, x1)
+        val sx1 = (segStart + segW).coerceIn(x0, x1)
+        if (sx1 > sx0) drawLayer(stack, facing, w, h, OVERLAY_LIFT * 2f) {
+            drawQuad(type) { pose, vb -> appendRect(pose, vb, sx0, y0, sx1, y1, 40, 110, 255) }
+        }
+    }
+
+    /**
+     * Runs [body] with the screen transform applied and the layer lifted [lift] blocks toward the
+     * viewer (in world space, before the transform's z-flattening scale) so stacked overlay quads
+     * occupy distinct depths.
+     */
+    private inline fun drawLayer(
+        stack: PoseStack, facing: DisplayFacing, w: Int, h: Int, lift: Float, body: () -> Unit,
+    ) {
+        stack.pushPose()
+        if (lift != 0f) DisplayGeometry.liftTowardViewer(stack, facing, lift)
+        DisplayGeometry.applyScreenTransform(stack, facing, w, h)
+        body()
+        stack.popPose()
+    }
+
+    /** Appends a solid-color rectangle spanning [x0,y0]-[x1,y1] in unit-quad space (UV is ignored: the
+     *  overlay type samples a 1x1 white texture). Wound CCW to match the video quad. */
+    private fun appendRect(
+        pose: PoseStack.Pose, builder: VertexConsumer,
+        x0: Float, y0: Float, x1: Float, y1: Float, r: Int, g: Int, b: Int,
+    ) {
+        addVertex(pose, builder, x0, y0, 0f, r, g, b, 0f, 0f)
+        addVertex(pose, builder, x1, y0, 0f, r, g, b, 0f, 0f)
+        addVertex(pose, builder, x1, y1, 0f, r, g, b, 0f, 0f)
+        addVertex(pose, builder, x0, y1, 0f, r, g, b, 0f, 0f)
     }
 
     /** Texture corners in vertex order; rotating the list by [rotation] quarter-turns spins the image. */

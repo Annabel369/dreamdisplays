@@ -112,4 +112,14 @@ object DisplayYuvRenderTypes {
         }
         return DisplayUnlitRenderTypes.create("dream-displays-fallback", id)
     }
+
+    @Volatile private var sharedSolidType: RenderType? = null
+
+    /**
+     * Shared flat solid-color render type (a 1 x 1 white texture modulated by the vertex color), used
+     * to draw UI overlays such as the loading bar independently of any per-display video allocation.
+     * Built once and reused. Render thread only.
+     */
+    fun solidColorType(): RenderType =
+        sharedSolidType ?: createFallback().also { sharedSolidType = it }
 }
