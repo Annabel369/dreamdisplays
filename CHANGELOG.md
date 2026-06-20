@@ -1,3 +1,29 @@
+# Version 1.8.2
+
+## Client
+
+### Improvements
+
+- YouTube videos now load a bit faster
+- Smoothed out a brief stutter that could happen right when a video changed
+- Tightened how video links are handled, with length limits and network-only access to keep them from being abused
+- Enhanced error screen when video loading fails
+- Enhanced video loading animation
+- Added 26.2 version to Paper building system
+- Improved Dream Display security
+
+### Fixes
+
+- Fixed audio cutting out after about 10 seconds ([#107](https://github.com/arsmotorin/dreamdisplays/pull/107))
+- Fixed repeating video playback in local playback mode
+
+## Server
+
+### Improvements
+
+- Players can no longer spam the report system
+- Improved Dream Display security
+
 # Version 1.8.1
 
 ## Client
