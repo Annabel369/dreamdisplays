@@ -76,7 +76,6 @@ object Processes {
      * Removes the macOS quarantine flag from a downloaded [binary] so Gatekeeper doesn't block it.
      * No-op on other platforms; failures are ignored (the binary usually still runs).
      */
-    // TODO: should be changed in future
     fun removeMacQuarantine(binary: Path) {
         if (!OsInfo.isMac) return
         try {

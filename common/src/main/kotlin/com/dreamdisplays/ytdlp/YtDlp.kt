@@ -9,8 +9,11 @@ import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.nio.file.Files
 import java.util.Locale
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * `yt-dlp` orchestrator: caching and request deduplication around the NewPipe fast path and the
@@ -20,18 +23,35 @@ import java.util.concurrent.TimeUnit
 object YtDlp {
     private val logger = LoggerFactory.getLogger("DreamDisplays/yt-dlp")
 
-    private const val CACHE_TTL_MS: Long = 5L * 60L * 60L * 1_000L
+    private val CACHE_TTL_MS: Long = FormatDiskCache.DEFAULT_TTL_MS
     private const val INFO_CACHE_TTL_MS: Long = 30L * 60L * 1_000L
 
     /** Per-invocation yt-dlp wait. With cookies off + token-free clients a warm fetch is sub-second,
      *  so this only bounds genuine failures; keep it short so they surface fast. */
     private const val FETCH_TIMEOUT_SECONDS: Long = 25L
 
+    /**
+     * The client tried first, alone: in practice it is the only one YouTube still serves a full
+     * downloadable adaptive ladder to, so a single fast request usually settles resolution.
+     */
+    private const val PRIMARY_CLIENT = "android_vr"
+
+    /**
+     * Token-free, non-DRM clients raced (one subprocess each) in parallel only when [PRIMARY_CLIENT]
+     * yields nothing usable — these currently hit the PO-token / SABR wall ("requested format is not
+     * available"), but stay here so resolution recovers automatically if they start working again.
+     */
+    private val FALLBACK_CLIENTS: List<String?> = listOf("ios", "tv", "android")
+
     private val PREWARM_EXECUTOR = Executors.newSingleThreadExecutor { r ->
         Thread(r, "YtDlp-prewarm").apply { isDaemon = true }
     }
     private val FETCH_EXECUTOR = Executors.newFixedThreadPool(3) { r ->
         Thread(r, "YtDlp-fetch").apply { isDaemon = true }
+    }
+    /** Per-client race workers; sized on demand since each waits on a blocking subprocess. */
+    private val RACE_EXECUTOR = Executors.newCachedThreadPool { r ->
+        Thread(r, "YtDlp-race").apply { isDaemon = true }
     }
     private val SEARCH_EXECUTOR = Executors.newFixedThreadPool(4) { r ->
         Thread(r, "YtDlp-search").apply { isDaemon = true }
@@ -141,78 +161,115 @@ object YtDlp {
     fun getPublicCookieHeader(): String? = cookies.header()
 
     /**
-     * Resolves streams for [videoUrl]. Tries the in-process [NewPipeResolver] fast path first and
-     * falls back to the `yt-dlp` subprocess (with one automatic retry on non-timeout errors).
+     * Resolves streams for [videoUrl]. Tries the in-process [NewPipeResolver] fast path first and,
+     * when that returns no quality ladder, races one `yt-dlp` subprocess per client in parallel and
+     * takes the first usable result (see [raceClients]).
      */
     @Throws(IOException::class)
     private fun fetchUncached(videoUrl: String): List<YtStream> {
         val viaNewPipe = NewPipeResolver.fetch(videoUrl)
-        if (offersQualityLadder(viaNewPipe)) return viaNewPipe
+        if (YtStreams.offersQualityLadder(viaNewPipe)) return viaNewPipe
         if (viaNewPipe.isNotEmpty()) {
             logger.debug(
-                "NewPipe returned no quality ladder for $videoUrl " +
-                        "(heights=${viaNewPipe.filter { it.hasVideo() }.mapNotNull { it.height }.distinct()}); " +
-                        "falling back to yt-dlp."
+                "NewPipe returned no quality ladder for {} (heights={}); racing yt-dlp clients.",
+                videoUrl, YtStreams.distinctHeights(viaNewPipe),
             )
         }
 
-        var lastError: IOException? = null
-        for (attempt in 0 until 2) {
-            if (attempt > 0) {
-                try {
-                    Thread.sleep(2_000)
-                } catch (ie: InterruptedException) {
-                    Thread.currentThread().interrupt()
-                    throw IOException("Interrupted before yt-dlp retry", ie)
-                }
-            }
-            try {
-                return fetchUncachedOnce(videoUrl, attempt)
-            } catch (e: IOException) {
-                logger.warn("yt-dlp fetch attempt $attempt failed for $videoUrl: ${e.message?.take(500)}.")
-                if (e.message?.contains("timed out", ignoreCase = true) == true) throw e
-                if (e.message?.contains("DRM protected", ignoreCase = true) == true) throw e
-                lastError = e
-            }
-        }
-        // yt-dlp failed entirely; a 360p-only NewPipe result still beats no playback at all
+        raceClients(videoUrl)?.let { return it }
+
+        // Every yt-dlp client failed; a 360p-only NewPipeExtractor result still beats no playback at all.
         if (viaNewPipe.isNotEmpty()) {
-            logger.warn("yt-dlp failed for $videoUrl; using NewPipe streams without a quality ladder.")
+            logger.warn("yt-dlp clients all failed for $videoUrl; using NewPipeExtractor streams without a quality ladder.")
             return viaNewPipe
         }
-        throw lastError!!
+        throw IOException("All yt-dlp clients failed for $videoUrl.")
     }
 
     /**
-     * True when [streams] gives the player an actual quality choice. YouTube's adaptive
-     * (video-only) tracks are often unavailable to the NewPipe fast path, leaving only the
-     * muxed 360p stream; in that case the slower yt-dlp path is worth the fallback.
+     * Resolves [videoUrl] via `yt-dlp`. Tries [PRIMARY_CLIENT] alone first (one request, fast, the
+     * only client that currently yields a ladder); only if it produces nothing usable does it fall
+     * back to racing [FALLBACK_CLIENTS] in parallel. With browser cookies configured, a single
+     * cookie-backed invocation is run instead (no client arg, no race). Returns null on total failure.
      */
-    private fun offersQualityLadder(streams: List<YtStream>): Boolean {
-        val heights = streams.asSequence()
-            .filter { it.hasVideo() }
-            .mapNotNull { it.height }
-            .distinct()
-            .toList()
-        return heights.size >= 2 || (heights.maxOrNull() ?: 0) >= 720
+    private fun raceClients(videoUrl: String): List<YtStream>? {
+        if (!cookies.disabledByConfig()) {
+            return runCatchingClient(videoUrl, null)?.takeIf { it.isNotEmpty() }
+        }
+        runCatchingClient(videoUrl, PRIMARY_CLIENT)?.takeIf { it.isNotEmpty() }?.let { return it }
+        return raceParallel(videoUrl, FALLBACK_CLIENTS)
     }
 
+    /** Runs a single [client] fetch on the current thread, returning null instead of throwing. */
+    private fun runCatchingClient(videoUrl: String, client: String?): List<YtStream>? =
+        try {
+            runClientFetch(videoUrl, client) { } // Single shot — no concurrent winner to abort against
+        } catch (e: Exception) {
+            logger.debug("yt-dlp client {} failed for {}: {}", client ?: "cookies", videoUrl, e.message?.take(200))
+            null
+        }
+
     /**
-     * Single `yt-dlp` invocation for [videoUrl]. On [attempt] 0 uses web / ios / mweb clients;
-     * on [attempt] 1 falls back to android / tv_embedded / mweb for better bot resistance.
+     * Races [clients] (one subprocess each) in parallel: the first to yield a quality ladder wins
+     * immediately and the still-running losers are killed; otherwise, once every client finishes,
+     * [bestResult] picks the strongest result. Returns null when every client failed.
+     */
+    private fun raceParallel(videoUrl: String, clients: List<String?>): List<YtStream>? {
+        val processes = CopyOnWriteArrayList<Process>()
+        val results = CopyOnWriteArrayList<List<YtStream>>()
+        val winner = CompletableFuture<List<YtStream>>()
+        val remaining = AtomicInteger(clients.size)
+
+        for (client in clients) {
+            RACE_EXECUTOR.execute {
+                try {
+                    val streams = runClientFetch(videoUrl, client) { proc ->
+                        processes.add(proc)
+                        if (winner.isDone) Processes.destroyTree(proc) // race already won; don't bother finishing
+                    }
+                    if (streams.isNotEmpty()) results.add(streams)
+                    if (YtStreams.offersQualityLadder(streams)) winner.complete(streams)
+                } catch (e: Exception) {
+                    logger.debug("yt-dlp client {} failed for {}: {}", client ?: "cookies", videoUrl, e.message?.take(200))
+                } finally {
+                    if (remaining.decrementAndGet() == 0) winner.complete(bestResult(results))
+                }
+            }
+        }
+
+        val result = try {
+            winner.get(FETCH_TIMEOUT_SECONDS + 10, TimeUnit.SECONDS)
+        } catch (e: Exception) {
+            logger.warn("yt-dlp race for $videoUrl did not settle: ${e.message}.")
+            emptyList()
+        } finally {
+            processes.forEach { runCatching { Processes.destroyTree(it) } }
+        }
+        return result.takeIf { it.isNotEmpty() }
+    }
+
+    /** Picks the strongest raced result: a quality ladder first, then the one with the most heights. */
+    private fun bestResult(results: List<List<YtStream>>): List<YtStream> =
+        results.maxWithOrNull(
+            compareBy<List<YtStream>> { if (YtStreams.offersQualityLadder(it)) 1 else 0 }
+                .thenBy { YtStreams.distinctHeights(it).size }
+        ) ?: emptyList()
+
+    /**
+     * Runs a single `yt-dlp` invocation for [videoUrl] with the given [client] (null = let yt-dlp
+     * choose, used on the cookie path). [onStarted] receives the live process so the racer can kill
+     * it once another client wins. Returns the parsed streams; throws on non-zero exit or timeout.
      */
     @Throws(IOException::class)
-    private fun fetchUncachedOnce(videoUrl: String, attempt: Int = 0): List<YtStream> {
+    private fun runClientFetch(videoUrl: String, client: String?, onStarted: (Process) -> Unit): List<YtStream> {
         val binary = YtDlpBinary.resolve(PREWARM_EXECUTOR)
         val cmd = ArrayList<String>()
         cmd.add(binary)
         val tempCookies = cookies.appendArgs(cmd)
 
         val hasCookieArg = cmd.any { it == "--cookies" || it == "--cookies-from-browser" }
-        if (!hasCookieArg) {
-            // Token-free, non-DRM clients only
-            val clients = if (attempt == 0) "android_vr,ios,tv" else "tv,android,ios"
-            cmd.addAll(listOf("--extractor-args", "youtube:player_client=$clients"))
+        if (!hasCookieArg && client != null) {
+            cmd.addAll(listOf("--extractor-args", "youtube:player_client=$client"))
         }
 
         cmd.addAll(
@@ -229,6 +286,7 @@ object YtDlp {
         val pb = ProcessBuilder(cmd)
         pb.redirectErrorStream(false)
         val process = pb.start()
+        onStarted(process)
         try {
             process.outputStream.close()
         } catch (_: IOException) {
@@ -241,22 +299,10 @@ object YtDlp {
         stderrReader.start()
         try {
             if (!process.waitFor(FETCH_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-                val pid = try {
-                    process.pid()
-                } catch (_: Exception) {
-                    -1L
-                }
-                val alive = process.isAlive
                 Processes.destroyTree(process)
                 stdoutReader.join(2_000)
                 stderrReader.join(2_000)
-                logger.warn(
-                    "Fetch timeout after ${FETCH_TIMEOUT_SECONDS}s for $videoUrl " +
-                            "(pid=$pid, alive=$alive, stdoutBytes=${stdout.length}, stderrBytes=${stderr.length}, " +
-                            "stderrTail=${stderr.takeLast(500).trim()}, " +
-                            "stdoutTail=${stdout.takeLast(200).trim()})"
-                )
-                throw IOException("Timed out for url: $videoUrl.")
+                throw IOException("Timed out for url: $videoUrl (client=${client ?: "cookies"}).")
             }
             stdoutReader.join(5_000)
             stderrReader.join(5_000)

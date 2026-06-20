@@ -88,7 +88,6 @@ internal class DisplayMediaController(private val screen: DisplayScreen) {
         // A replay-bootstrap player already resumes at the saved position; restoreSavedTime()'s
         // corrective seek would cold-restart the session and destroy the seamless replay -> live bridge.
         if (!mp.isResumingFromReplay()) screen.restoreSavedTime()
-        // screen.syncController.bootstrapIfNeeded();
         // No bootstrap needed for sync since 1.8.0.
     }
 

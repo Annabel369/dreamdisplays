@@ -10,14 +10,18 @@ import com.google.gson.JsonParser
 import java.io.IOException
 import java.util.Locale
 import java.util.regex.Pattern
-import kotlin.math.max
-import kotlin.math.round
 
 /**
  * Pure parsing of `yt-dlp -J` JSON output into [YtStream] descriptors: format filtering, live / seekable
  * detection, and resolution extraction.
  */
 internal object YtDlpOutputParser {
+    /** Matches an explicit progressive-style resolution token (e.g. "720p") within a candidate string. */
+    private val RESOLUTION_P_PATTERN: Pattern = Pattern.compile("(\\d{3,4})p")
+
+    /** Matches a bare 3-4 digit height token within a candidate string, used as a fallback. */
+    private val RESOLUTION_DIGITS_PATTERN: Pattern = Pattern.compile("(\\d{3,4})")
+
     /** Parses the JSON output of `yt-dlp -J` into a flat list of [YtStream] descriptors. */
     @Throws(IOException::class)
     fun parseFormats(json: String): List<YtStream> {
@@ -85,10 +89,7 @@ internal object YtDlpOutputParser {
     /** Reads the `duration` field and converts seconds to nanoseconds; returns 0 for live or missing values. */
     private fun durationNanos(obj: JsonObject): Long {
         val durationSeconds = obj.optDouble("duration") ?: return 0L
-        if (durationSeconds <= 0.0) return 0L
-        val nanos = durationSeconds * 1_000_000_000.0
-        if (nanos >= Long.MAX_VALUE.toDouble()) return Long.MAX_VALUE
-        return max(0L, round(nanos).toLong())
+        return Durations.secondsToNanos(durationSeconds)
     }
 
     /** Returns true if the stream protocol (or fallback URL extension) is one we can pipe through FFmpeg. */
@@ -105,9 +106,9 @@ internal object YtDlpOutputParser {
     private fun extractResolution(vararg candidates: String?): String? {
         for (candidate in candidates) {
             if (candidate.isNullOrBlank()) continue
-            var m = Pattern.compile("(\\d{3,4})p").matcher(candidate)
+            var m = RESOLUTION_P_PATTERN.matcher(candidate)
             if (m.find()) return "${m.group(1)}p"
-            m = Pattern.compile("(\\d{3,4})").matcher(candidate)
+            m = RESOLUTION_DIGITS_PATTERN.matcher(candidate)
             if (m.find()) return "${m.group(1)}p"
         }
         return null

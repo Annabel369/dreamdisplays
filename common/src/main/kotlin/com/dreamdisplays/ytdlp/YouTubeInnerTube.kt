@@ -1,6 +1,5 @@
 package com.dreamdisplays.ytdlp
 
-import com.dreamdisplays.managers.ClientStateManager
 import com.dreamdisplays.media.api.MediaSearchResult
 import com.dreamdisplays.utils.optString
 import com.google.gson.JsonElement
@@ -9,9 +8,6 @@ import com.google.gson.JsonParser
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.net.HttpURLConnection
-import java.net.InetSocketAddress
-import java.net.Proxy
-import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.util.regex.Pattern
 
@@ -136,31 +132,7 @@ object YouTubeInnerTube {
     }
 
     /** Opens an [HttpURLConnection] for [url], routing through the configured proxy if one is set. */
-    private fun openConnection(url: String): HttpURLConnection {
-        val uri = URI.create(url)
-        val proxyStr = try {
-            ClientStateManager.config.ytdlpProxy.trim()
-        } catch (_: Exception) {
-            ""
-        }
-        if (proxyStr.isEmpty()) {
-            return uri.toURL().openConnection() as HttpURLConnection
-        }
-        val proxyUri = try {
-            URI.create(proxyStr)
-        } catch (_: Exception) {
-            logger.warn("Invalid proxy URL: $proxyStr.")
-            return uri.toURL().openConnection() as HttpURLConnection
-        }
-        val type = when (proxyUri.scheme?.lowercase()) {
-            "socks5", "socks4", "socks" -> Proxy.Type.SOCKS
-            else -> Proxy.Type.HTTP
-        }
-        val port = if (proxyUri.port > 0) proxyUri.port else if (type == Proxy.Type.SOCKS) 1080 else 8080
-        val host = proxyUri.host ?: return uri.toURL().openConnection() as HttpURLConnection
-        val proxy = Proxy(type, InetSocketAddress(host, port))
-        return uri.toURL().openConnection(proxy) as HttpURLConnection
-    }
+    private fun openConnection(url: String): HttpURLConnection = ProxyConnections.open(url)
 
     /** Builds the base InnerTube request body with client context (name, version, language). */
     private fun baseContext(): JsonObject {

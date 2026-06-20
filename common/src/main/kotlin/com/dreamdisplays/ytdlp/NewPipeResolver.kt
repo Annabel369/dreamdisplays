@@ -1,6 +1,5 @@
 package com.dreamdisplays.ytdlp
 
-import com.dreamdisplays.managers.ClientStateManager
 import com.dreamdisplays.media.api.MediaMetadata
 import com.dreamdisplays.media.api.MediaResolver
 import com.dreamdisplays.media.api.MediaSource
@@ -20,15 +19,10 @@ import org.schabi.newpipe.extractor.stream.StreamType
 import org.schabi.newpipe.extractor.stream.VideoStream
 import org.slf4j.LoggerFactory
 import java.net.HttpURLConnection
-import java.net.InetSocketAddress
-import java.net.Proxy
-import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.zip.GZIPInputStream
-import kotlin.math.max
-import kotlin.math.round
 
 /**
  * In-process YouTube stream resolver backed by NewPipeExtractor. This is the fast path used before
@@ -58,19 +52,15 @@ object NewPipeResolver : MediaResolver {
     override fun resolve(source: MediaSource): ResolvedMedia {
         ensureInitialized()
         check(initialized.get()) { "NewPipeExtractor failed to initialize" }
-        val url = when (source) {
-            is MediaSource.YouTube -> "https://www.youtube.com/watch?v=${source.videoId}"
-            is MediaSource.Remote -> source.url
-            is MediaSource.DirectStream -> source.streamUrl
-            is MediaSource.Twitch -> throw UnsupportedOperationException("Twitch not supported by NewPipeResolver")
-        }
+        val url = source.toResolvableUrl()
+            ?: throw UnsupportedOperationException("Twitch not supported by NewPipeResolver")
         val resolved = resolveCached(url)
             ?: throw IllegalStateException("NewPipe could not resolve $url; deferring to yt-dlp")
         // YouTube often exposes only the muxed 360p track to this client (adaptive tracks are
         // SABR / DASH-only); failing here lets the resolver chain fall through to yt-dlp, which
         // still gets the full quality ladder.
-        if (!resolved.isLive && !offersQualityLadder(resolved.streams)) {
-            val heights = resolved.streams.filter { it.hasVideo() }.mapNotNull { it.height }.distinct()
+        if (!resolved.isLive && !YtStreams.offersQualityLadder(resolved.streams)) {
+            val heights = YtStreams.distinctHeights(resolved.streams)
             throw IllegalStateException("NewPipe returned no quality ladder (heights=$heights); deferring to yt-dlp")
         }
         return ResolvedMedia(
@@ -87,16 +77,6 @@ object NewPipeResolver : MediaResolver {
             isLive = resolved.isLive,
             isSeekable = resolved.isSeekable,
         )
-    }
-
-    /** True when [streams] gives the player an actual quality choice (>=2 heights or >=720p). */
-    private fun offersQualityLadder(streams: List<YtStream>): Boolean {
-        val heights = streams.asSequence()
-            .filter { it.hasVideo() }
-            .mapNotNull { it.height }
-            .distinct()
-            .toList()
-        return heights.size >= 2 || (heights.maxOrNull() ?: 0) >= 720
     }
 
     /** Initializes NewPipeExtractor with our HTTP downloader exactly once. Safe to call repeatedly. */
@@ -179,7 +159,7 @@ object NewPipeResolver : MediaResolver {
             val live = streamType == StreamType.LIVE_STREAM ||
                     streamType == StreamType.AUDIO_LIVE_STREAM ||
                     streamType == StreamType.POST_LIVE_STREAM
-            val durationNanos = durationToNanos(safe { extractor.length } ?: 0L)
+            val durationNanos = Durations.secondsToNanos(safe { extractor.length } ?: 0L)
             val seekable = !live && durationNanos > 0L
 
             val streams = mapStreams(extractor, live, seekable, durationNanos)
@@ -308,14 +288,6 @@ object NewPipeResolver : MediaResolver {
     private fun protocolOf(s: Stream): String =
         if (s.deliveryMethod == DeliveryMethod.HLS) "m3u8_native" else "https"
 
-    /** Converts a duration in seconds to nanoseconds, clamped to [Long.MAX_VALUE]; returns 0 for non-positive. */
-    private fun durationToNanos(seconds: Long): Long {
-        if (seconds <= 0L) return 0L
-        val nanos = seconds.toDouble() * 1_000_000_000.0
-        if (nanos >= Long.MAX_VALUE.toDouble()) return Long.MAX_VALUE
-        return max(0L, round(nanos).toLong())
-    }
-
     /** Fully resolved video, cached and shared between the [resolve] and [fetch] entry points. */
     private class Resolved(
         val streams: List<YtStream>,
@@ -368,26 +340,6 @@ object NewPipeResolver : MediaResolver {
         }
 
         /** Opens a connection for [urlStr], routing through the configured proxy if one is set. */
-        private fun openConnection(urlStr: String): HttpURLConnection {
-            val uri = URI.create(urlStr)
-            val proxyStr = try {
-                ClientStateManager.config.ytdlpProxy.trim()
-            } catch (_: Exception) {
-                ""
-            }
-            if (proxyStr.isEmpty()) return uri.toURL().openConnection() as HttpURLConnection
-            val proxyUri = try {
-                URI.create(proxyStr)
-            } catch (_: Exception) {
-                return uri.toURL().openConnection() as HttpURLConnection
-            }
-            val type = when (proxyUri.scheme?.lowercase()) {
-                "socks5", "socks4", "socks" -> Proxy.Type.SOCKS
-                else -> Proxy.Type.HTTP
-            }
-            val port = if (proxyUri.port > 0) proxyUri.port else if (type == Proxy.Type.SOCKS) 1080 else 8080
-            val host = proxyUri.host ?: return uri.toURL().openConnection() as HttpURLConnection
-            return uri.toURL().openConnection(Proxy(type, InetSocketAddress(host, port))) as HttpURLConnection
-        }
+        private fun openConnection(urlStr: String): HttpURLConnection = ProxyConnections.open(urlStr)
     }
 }

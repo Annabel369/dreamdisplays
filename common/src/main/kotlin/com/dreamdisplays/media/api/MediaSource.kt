@@ -10,6 +10,17 @@ sealed interface MediaSource {
     data class Twitch(val channel: String) : MediaSource
     data class DirectStream(val streamUrl: String) : MediaSource
 
+    /**
+     * Returns the HTTP(S) URL a resolver can feed to `yt-dlp` / `NewPipeExtractor`, or null for sources with no
+     * such URL (currently [Twitch], which the resolution pipeline does not support).
+     */
+    fun toResolvableUrl(): String? = when (this) {
+        is YouTube -> "https://www.youtube.com/watch?v=$videoId"
+        is Remote -> url
+        is DirectStream -> streamUrl
+        is Twitch -> null
+    }
+
     companion object {
         private val YOUTUBE_ID_RE = Regex("(?:v=|youtu\\.be/|shorts/|live/)([A-Za-z0-9_-]{11})")
 

@@ -28,7 +28,7 @@ class YtStream(
     val durationNanos: Long,
 ) {
 
-    /** Returns the stream's bitrate in kbps, or null if not available. */
+    /** Returns true if the stream has a video track. */
     fun hasVideo(): Boolean = hasVideo
 
     /** Returns true if the stream has audio, even if it's not a video stream. */

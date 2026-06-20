@@ -16,7 +16,6 @@ import kotlin.time.Duration.Companion.nanoseconds
  * [YtDlp.fetch] only returns playable stream descriptors; only duration and live/seekable flags
  * carried on the streams are reported.
  */
-// TODO: change this in future
 object YtDlpResolver : MediaResolver {
 
     /** Below [NewPipeResolver] (10) so the in-process path is always tried first. */
@@ -27,12 +26,7 @@ object YtDlpResolver : MediaResolver {
 
     /** Pre-warms the yt-dlp format cache for [source] on a background thread. */
     override fun prefetch(source: MediaSource) {
-        val url = when (source) {
-            is MediaSource.YouTube -> "https://www.youtube.com/watch?v=${source.videoId}"
-            is MediaSource.Remote -> source.url
-            is MediaSource.DirectStream -> source.streamUrl
-            is MediaSource.Twitch -> return
-        }
+        val url = source.toResolvableUrl() ?: return
         YtDlp.prefetchFormats(url)
     }
 
@@ -41,12 +35,8 @@ object YtDlpResolver : MediaResolver {
      * failure or timeout; the resolver chain catches it and either falls through or reports the error.
      */
     override fun resolve(source: MediaSource): ResolvedMedia {
-        val url = when (source) {
-            is MediaSource.YouTube -> "https://www.youtube.com/watch?v=${source.videoId}"
-            is MediaSource.Remote -> source.url
-            is MediaSource.DirectStream -> source.streamUrl
-            is MediaSource.Twitch -> throw UnsupportedOperationException("Twitch not supported by YtDlpResolver")
-        }
+        val url = source.toResolvableUrl()
+            ?: throw UnsupportedOperationException("Twitch not supported by YtDlpResolver")
         val streams = YtDlp.fetch(url)
         check(streams.isNotEmpty()) { "yt-dlp returned no playable streams for $url" }
 
