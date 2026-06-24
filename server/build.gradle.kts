@@ -22,9 +22,9 @@ repositories {
     if (isLegacyObfuscatedMinecraft) {
         maven(rootProject.layout.projectDirectory.dir(".gradle/loom-cache/remapped_mods"))
     }
-    mavenCentral()
-    maven("https://repo.lostyy.ru/releases")
+    // Official PaperMC repo first — avoids timeout on the community mirror
     maven("https://repo.papermc.io/repository/maven-public/")
+    mavenCentral()
     maven("https://oss.sonatype.org/content/groups/public/")
     maven("https://jitpack.io")
 }
